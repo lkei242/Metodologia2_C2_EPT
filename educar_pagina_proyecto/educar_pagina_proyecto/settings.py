@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -135,10 +136,10 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
-#Conectar con Airtable
-AIRTABLE_TOKEN = "patXqBRQT7VKBJ4ho.ca0978a60586b75d7dbbbd048718e3787d8d6bfcad3b9b85469507b0115e68d6"
-AIRTABLE_BASE_ID = "appZFfSOhXkYJDNKA"
-AIRTABLE_TABLE_NAME = "Solicitudes" 
+# Conectar con Airtable (lectura mediante variables de entorno)
+AIRTABLE_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")
+AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID", "")
+AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME", "Solicitudes")
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
@@ -146,8 +147,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = 'educarparatransformarcolegio@gmail.com'
-EMAIL_HOST_PASSWORD = 'wjvyxygngxebxsgl'
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "educarparatransformarcolegio@gmail.com")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 
 EMAIL_TIMEOUT = 10
 
