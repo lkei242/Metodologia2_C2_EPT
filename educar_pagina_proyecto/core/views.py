@@ -593,33 +593,27 @@ def dashboard_docente(request):
 
     tareas = Tarea.objects.filter(docente=docente).select_related('curso_destinado', 'materia').order_by('-fecha_creacion')
 
-    # calificaciones
     calificaciones = Calificacion.objects.filter(
         id_materia__in=materias,
         legajo_alumno__in=alumnos
     ).select_related('id_materia', 'legajo_alumno')
 
-    # diccionario de notas
-    # diccionario de notas (agrupado por tipo de bimestre)
-    # diccionario de notas (agrupado por tipo de bimestre)
     notas_por_alumno = {}
-    for c in calificaciones:
-        alumno_id = c.legajo_alumno_id
-        
-        # Crear entrada si no existe
+    for calificacion in calificaciones:
+        alumno_id = calificacion.legajo_alumno_id
+
         if alumno_id not in notas_por_alumno:
             notas_por_alumno[alumno_id] = {'trim1': '', 'trim2': '', 'trim3': ''}
 
-        val_nota = float(c.nota) if c.nota is not None else ''
-        
-        # Asignar nota según el tipo de evaluación
-        if c.tipo_evaluacion == '1° Bimestre':
-            notas_por_alumno[alumno_id]['trim1'] = str(val_nota)  # Convertir a string para mostrar
-        elif c.tipo_evaluacion == '2° Bimestre':
-            notas_por_alumno[alumno_id]['trim2'] = str(val_nota)
-        elif c.tipo_evaluacion == '3° Bimestre':
-            notas_por_alumno[alumno_id]['trim3'] = str(val_nota)
-    # cursos
+        valor_nota = float(calificacion.nota) if calificacion.nota is not None else ''
+
+        if calificacion.tipo_evaluacion == '1° Bimestre':
+            notas_por_alumno[alumno_id]['trim1'] = str(valor_nota)
+        elif calificacion.tipo_evaluacion == '2° Bimestre':
+            notas_por_alumno[alumno_id]['trim2'] = str(valor_nota)
+        elif calificacion.tipo_evaluacion == '3° Bimestre':
+            notas_por_alumno[alumno_id]['trim3'] = str(valor_nota)
+
     cursos_data = []
     for curso in cursos:
         alumnos_count = Alumno.objects.filter(id_curso=curso).count()
@@ -634,17 +628,16 @@ def dashboard_docente(request):
             'promedio': round(promedio, 1) if promedio else 0,
         })
 
-    # horarios
     horarios = CursoCursaMaterias.objects.filter(
         id_materia__in=materias
     ).select_related('id_curso', 'id_materia')
 
     horario_dict = {}
-    for h in horarios:
-        data = h.horarios
-        if isinstance(data, str):
-            data = json.loads(data)
-        for dia, rango in data.items():
+    for horario_materia in horarios:
+        datos_horarios = horario_materia.horarios
+        if isinstance(datos_horarios, str):
+            datos_horarios = json.loads(datos_horarios)
+        for dia, rango in datos_horarios.items():
             if rango not in horario_dict:
                 horario_dict[rango] = {
                     'Lunes': '-',
@@ -653,10 +646,11 @@ def dashboard_docente(request):
                     'Jueves': '-',
                     'Viernes': '-',
                 }
-            dia_cap = dia.capitalize()
-            if dia_cap == 'Miercoles':
-                dia_cap = 'Miércoles'
-            horario_dict[rango][dia_cap] = f"{h.id_curso.anio}° {h.id_curso.nivel} ({h.id_curso.comision}) - {h.id_curso.turno}"
+            dia_formateado = dia.capitalize()
+            if dia_formateado == 'Miercoles':
+                dia_formateado = 'Miércoles'
+            curso = horario_materia.id_curso
+            horario_dict[rango][dia_formateado] = f"{curso.anio}° {curso.nivel} ({curso.comision}) - {curso.turno}"
     cantidad_tareas = tareas.count()
     return render(request, 'core/dashboard-docente.html', {
         'persona': persona,
@@ -688,19 +682,19 @@ def horario_docente(request):
         docentedictamateria__id_docente=docente
     ).distinct()
 
-    cursos = CursoCursaMaterias.objects.filter(
+    cursos_materia = CursoCursaMaterias.objects.filter(
         id_materia__in=materias
     )
 
     horario = {}
 
-    for c in cursos:
-        data = c.horarios
+    for curso_materia in cursos_materia:
+        datos_horarios = curso_materia.horarios
 
-        if isinstance(data, str):
-            data = json.loads(data)
+        if isinstance(datos_horarios, str):
+            datos_horarios = json.loads(datos_horarios)
 
-        for dia, rango in data.items():
+        for dia, rango in datos_horarios.items():
             if rango not in horario:
                 horario[rango] = {
                     "Lunes": "-",
@@ -710,12 +704,12 @@ def horario_docente(request):
                     "Viernes": "-"
                 }
 
-            dia_cap = dia.capitalize()
+            dia_formateado = dia.capitalize()
 
-            if dia_cap == "Miercoles":
-                dia_cap = "Miércoles"
+            if dia_formateado == "Miercoles":
+                dia_formateado = "Miércoles"
 
-            horario[rango][dia_cap] = c.id_curso.comision
+            horario[rango][dia_formateado] = curso_materia.id_curso.comision
 
     return render(request, "tu_template.html", {
         "horario": horario
@@ -862,37 +856,23 @@ def enviar_postulacion(request):
 
         ruta_cv = None
         
-        print("CORREO RECIBIDO:", repr(correo))
-        
-        print(
-            "VALIDACION:",
-            bool(re.match(r"^[^@]+@[^@]+\.[^@]+$", correo))
-)
-        
         if not nombre.replace(" ", "").isalpha():
-            print("Nombre inválido")
             return redirect('postulacion')
 
         if not apellido.replace(" ", "").isalpha():
-            print("Apellido inválido")
             return redirect('postulacion')
 
         if not dni.isdigit():
-            print("DNI inválido")
             return redirect('postulacion')
 
         if len(dni) < 7 or len(dni) > 8:
-            print("DNI inválido")
             return redirect('postulacion')
 
         if not re.match(r"^[^@]+@[^@]+\.[^@]+$", correo):
-            print("Correo inválido")
             messages.error(request, "Ingrese un correo electrónico válido.")
-            print("MENSAJE AGREGADO")
             return redirect('postulacion')
 
         if not telefono.isdigit():
-            print("Teléfono inválido")
             return redirect('postulacion')
 
         if cv:
@@ -913,8 +893,6 @@ def enviar_postulacion(request):
             fecha_postulacion=datetime.now()
         )
 
-        print("Postulación guardada correctamente")
-        
         correo = EmailMessage(
             subject=f"Nueva postulación - {nombre} {apellido}",
             body=f"""
@@ -1003,7 +981,6 @@ def enviar_consulta(request):
             })
 
         except Exception as e:
-            print("ERROR RESEND:", e)
             raise
 
         messages.success(
@@ -1200,7 +1177,6 @@ def rechazar_inscripcion(request, id_solicitud):
 
 @never_cache
 def crear_reserva(request):
-    print(request.POST)
 
     if request.method == "POST":
 
@@ -1469,7 +1445,6 @@ def dashboard_padres(request):
                 'documentacion': documentacion,
             })
 
-    # 📊 promedio general
     promedio_general = round(
         suma_promedios / cantidad_promedios,
         2
@@ -1482,7 +1457,6 @@ def dashboard_padres(request):
         0
     ) if total_asistencias else 0
 
-    # 📢 COMUNICADOS (JSON) SOLO DIRECTIVOS
     COMUNICADOS_FILE = os.path.join(
         settings.BASE_DIR,
         "core",
@@ -1536,7 +1510,6 @@ def dashboard_padres(request):
                         comunicados_filtrados.append(c)
                         vistos.add(clave)
 
-            # 🔥 ORDEN CORRECTO (más nuevos primero)
             comunicados_filtrados.sort(
                 key=parse_fecha,
                 reverse=True
@@ -1718,10 +1691,10 @@ def dashboard_preceptor(request):
 
                     if comunicado.get('rol') == 'Directivo':
 
-                        notificaciones.append({
-                            'tipo': 'comunicado',
-                            'icono': '📢',
-                            'color': '#dbeafe',
+                    notificaciones.append({
+                        'tipo': 'comunicado',
+                        'icono': '📢',
+                        'color': '#dbeafe',
                             'titulo': comunicado.get('titulo'),
                             'mensaje': comunicado.get('contenido'),
                             'fecha': comunicado.get('fecha')
@@ -1832,19 +1805,16 @@ def crear_noticia(request):
         ruta_imagen = None
 
         if imagen:
+            fs = FileSystemStorage(
+                location=os.path.join(settings.MEDIA_ROOT, 'noticias')
+            )
 
-            if imagen:
+            nombre_archivo = fs.save(
+                imagen.name,
+                imagen
+            )
 
-                fs = FileSystemStorage(
-                    location=os.path.join(settings.MEDIA_ROOT, 'noticias')
-                )
-
-                nombre_archivo = fs.save(
-                    imagen.name,
-                    imagen
-                )
-
-                ruta_imagen = f'noticias/{nombre_archivo}'
+            ruta_imagen = f'noticias/{nombre_archivo}'
 
         Noticia.objects.create(
             titulo=titulo,
@@ -1884,7 +1854,6 @@ def guardar_opinion(request):
             opiniones = []
 
         # Agregar la nueva opinión
-        from datetime import datetime
         opiniones.append({
             'nombre': nombre,
             'texto': opinion,
@@ -1912,7 +1881,6 @@ def obtener_datos_sesion(request):
         if not persona:
             return None, None
             
-        # Determinar a que dashboard debe redirigir segun su rol
         dashboard_url = 'login'
         if PersonalAdministrativo.objects.filter(id_persona=persona).exists():
             dashboard_url = 'dashboard-administrativo'
@@ -1976,8 +1944,6 @@ def crear_comunicado(request):
             except json.JSONDecodeError:
                 comunicados = []
 
-        # 👇 🔥 ACÁ VA LO NUEVO (ANTES DE ARMAR EL OBJETO)
-
         curso_obj = None
 
         if rol == "Preceptor" and curso_id:
@@ -1986,7 +1952,6 @@ def crear_comunicado(request):
                 legajo_preceptor__id_persona=persona
             ).first()
 
-        # 🔥 ARMADO DEL OBJETO (BASE)
         nuevo_comunicado = {
             'titulo': titulo,
             'contenido': contenido_form,
@@ -1995,7 +1960,6 @@ def crear_comunicado(request):
             'fecha': datetime.now().strftime('%d/%m/%Y %H:%M')
         }
 
-        # 👇 SOLO SI ES PRECEPTOR
         if rol == "Preceptor" and curso_obj:
             nuevo_comunicado['curso_id'] = curso_obj.id_curso
             nuevo_comunicado['curso'] = f"{curso_obj.nivel} {curso_obj.anio}° {curso_obj.comision}"
@@ -2348,7 +2312,6 @@ def rechazar_documentacion(request, id_documentacion):
 
     doc.id_administrativo = administrativo
 
-    # Eliminar archivos físicos
     archivos = [
         doc.dni_frente,
         doc.dni_dorso,
@@ -2368,7 +2331,6 @@ def rechazar_documentacion(request, id_documentacion):
             if os.path.exists(ruta):
                 os.remove(ruta)
 
-    # Vaciar rutas de archivos
     doc.dni_frente = None
     doc.dni_dorso = None
     doc.partida_nacimiento = None
@@ -2384,7 +2346,6 @@ def rechazar_documentacion(request, id_documentacion):
     return redirect(
         'dashboard-administrativo'
     )
-    return redirect('dashboard-administrativo')
 
 @never_cache
 def list_tareas(request):
@@ -2645,8 +2606,6 @@ def guardar_nota(request):
             'error': str(ve)
         })
     except Exception as e:
-        import traceback
-        print("ERROR en guardar_nota:", traceback.format_exc())
         return JsonResponse({
             'success': False, 
             'error': str(e)
