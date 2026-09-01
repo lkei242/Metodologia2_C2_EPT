@@ -46,6 +46,23 @@ COMUNICADOS_FILE = os.path.join(os.path.dirname(__file__), 'comunicados.json')
 OPINIONES_FILE = os.path.join(os.path.dirname(__file__), 'opiniones.json')
 
 
+def determinar_dashboard_url(persona):
+    """Determina la URL del panel de control según el rol de la persona."""
+    if PersonalAdministrativo.objects.filter(id_persona=persona).exists():
+        return 'dashboard-administrativo'
+    if Docente.objects.filter(id_persona=persona).exists():
+        return 'dashboard-docente'
+    if Tutor.objects.filter(id_persona=persona).exists():
+        return 'dashboard-padres'
+    if Preceptor.objects.filter(id_persona=persona).exists():
+        return 'dashboard-preceptor'
+    if Directivo.objects.filter(id_persona=persona).exists():
+        return 'dashboard-directivo'
+    if Alumno.objects.filter(id_persona=persona).exists():
+        return 'dashboard-alumno'
+    return 'login'
+
+
 def obtener_persona(request):
     """Obtiene la instancia de Persona asociada al usuario autenticado en la sesión."""
     usuario_id = request.session.get('usuario_id')
@@ -1880,21 +1897,8 @@ def obtener_datos_sesion(request):
         persona = Persona.objects.filter(id_usuario=usuario).first()
         if not persona:
             return None, None
-            
-        dashboard_url = 'login'
-        if PersonalAdministrativo.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-administrativo'
-        elif Docente.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-docente'
-        elif Tutor.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-padres'
-        elif Preceptor.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-preceptor'
-        elif Directivo.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-directivo'
-        elif Alumno.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-alumno'
-            
+
+        dashboard_url = determinar_dashboard_url(persona)
         return persona, dashboard_url
     except Usuario.DoesNotExist:
         return None, None
