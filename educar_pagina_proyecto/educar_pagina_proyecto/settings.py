@@ -135,12 +135,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
-# Conectar con Airtable (lectura mediante variables de entorno)
-AIRTABLE_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")
-AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID", "")
-AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME", "Solicitudes")
-
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 EMAIL_HOST = 'smtp.gmail.com'
