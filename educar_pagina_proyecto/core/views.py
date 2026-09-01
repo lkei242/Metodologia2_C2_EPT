@@ -46,6 +46,25 @@ COMUNICADOS_FILE = os.path.join(os.path.dirname(__file__), 'comunicados.json')
 OPINIONES_FILE = os.path.join(os.path.dirname(__file__), 'opiniones.json')
 
 
+def leer_archivo_json(ruta_archivo):
+    """Lee y retorna el contenido de un archivo JSON. Devuelve una lista vacía si el archivo
+    no existe, está vacío o contiene JSON inválido."""
+    if not os.path.exists(ruta_archivo):
+        return []
+    try:
+        with open(ruta_archivo, 'r', encoding='utf-8') as f:
+            contenido = f.read().strip()
+            return json.loads(contenido) if contenido else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def guardar_archivo_json(ruta_archivo, datos):
+    """Guarda una lista de datos en un archivo JSON."""
+    with open(ruta_archivo, 'w', encoding='utf-8') as f:
+        json.dump(datos, f, ensure_ascii=False, indent=2)
+
+
 def determinar_dashboard_url(persona):
     """Determina la URL del panel de control según el rol de la persona."""
     if PersonalAdministrativo.objects.filter(id_persona=persona).exists():
@@ -94,16 +113,8 @@ def bienestar(request):
 
 def contacto(request):
     """Página de contacto y visualización de opiniones recibidas."""
-    opiniones = []
-    if os.path.exists(OPINIONES_FILE):
-        try:
-            with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-                contenido = f.read().strip()
-                if contenido:
-                    opiniones = json.loads(contenido)
-                    opiniones.reverse()
-        except (json.JSONDecodeError, FileNotFoundError):
-            opiniones = []
+    opiniones = leer_archivo_json(OPINIONES_FILE)
+    opiniones.reverse()
 
     persona, dashboard_url = obtener_datos_sesion(request)
     return render(request, 'core/contacto.html', {
@@ -517,25 +528,19 @@ def dashboard_alumno(request):
     comunicados_file_path = os.path.join(settings.BASE_DIR, "core", "comunicados.json")
     comunicados_alumno, ultimos_comunicados = [], []
 
-    if os.path.exists(comunicados_file_path):
-        try:
-            with open(comunicados_file_path, 'r', encoding='utf-8') as f:
-                file_content = f.read().strip()
-                comunicados = json.loads(file_content) if file_content else []
-                comunicados_alumno = [
-                    item for item in comunicados
-                    if (
-                        item.get('rol') == 'Directivo'
-                        or (
-                            item.get('rol') == 'Preceptor'
-                            and item.get('curso', '').strip().lower() == curso_alumno.strip().lower()
-                        )
-                    )
-                ]
-                comunicados_alumno.reverse()
-            ultimos_comunicados = comunicados_alumno[:3]
-        except json.JSONDecodeError:
-            comunicados_alumno, ultimos_comunicados = [], []
+    comunicados = leer_archivo_json(comunicados_file_path)
+    comunicados_alumno = [
+        item for item in comunicados
+        if (
+            item.get('rol') == 'Directivo'
+            or (
+                item.get('rol') == 'Preceptor'
+                and item.get('curso', '').strip().lower() == curso_alumno.strip().lower()
+            )
+        )
+    ]
+    comunicados_alumno.reverse()
+    ultimos_comunicados = comunicados_alumno[:3]
     
     tareas_alumno = []
     if materias.exists():
@@ -1043,11 +1048,7 @@ def dashboard_administrativo(request):
         'id_persona_solicitante'
     ).all()
     
-    if os.path.exists(OPINIONES_FILE):
-        with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-            opiniones = json.load(f)
-    else:
-        opiniones = []
+    opiniones = leer_archivo_json(OPINIONES_FILE)
     
     cuotas = Cuota.objects.select_related(
         'id_tutor__id_persona',
@@ -1295,17 +1296,11 @@ def crear_reserva(request):
 def eliminar_opinion(request, indice):
 
     if request.method == "POST":
+        opiniones = leer_archivo_json(OPINIONES_FILE)
 
-        if os.path.exists(OPINIONES_FILE):
-
-            with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-                opiniones = json.load(f)
-
-            if 0 <= indice < len(opiniones):
-                opiniones.pop(indice)
-
-            with open(OPINIONES_FILE, 'w', encoding='utf-8') as f:
-                json.dump(opiniones, f, ensure_ascii=False, indent=2)
+        if 0 <= indice < len(opiniones):
+            opiniones.pop(indice)
+            guardar_archivo_json(OPINIONES_FILE, opiniones)
 
     return redirect('dashboard-administrativo')
 
@@ -1488,52 +1483,42 @@ def dashboard_padres(request):
     def parse_fecha(c):
         try:
             return datetime.strptime(c.get("fecha", ""), '%d/%m/%Y %H:%M')
-        except:
+        except (ValueError, TypeError):
             return datetime.min
 
-    if os.path.exists(COMUNICADOS_FILE):
+    comunicados = leer_archivo_json(COMUNICADOS_FILE)
 
-        try:
-            with open(COMUNICADOS_FILE, 'r', encoding='utf-8') as f:
-                file_content = f.read().strip()
-                comunicados = json.loads(file_content) if file_content else []
+    for relacion in relaciones:
 
-            for relacion in relaciones:
+        alumno = relacion.id_alumno
+        curso_alumno = f"{alumno.id_curso.nivel} {alumno.id_curso.anio}° {alumno.id_curso.comision}"
 
-                alumno = relacion.id_alumno
-                curso_alumno = f"{alumno.id_curso.nivel} {alumno.id_curso.anio}° {alumno.id_curso.comision}"
+        for c in comunicados:
 
-                for c in comunicados:
-
-                    clave = (
-                        c.get('titulo'),
-                        c.get('fecha'),
-                        c.get('rol')
-                    )
-
-                    if clave in vistos:
-                        continue
-
-                    # Directivo siempre
-                    if c.get('rol') == 'Directivo':
-                        comunicados_filtrados.append(c)
-                        vistos.add(clave)
-
-                    # Preceptor solo si coincide curso
-                    elif (
-                        c.get('rol') == 'Preceptor'
-                        and c.get('curso', '').strip().lower() == curso_alumno.strip().lower()
-                    ):
-                        comunicados_filtrados.append(c)
-                        vistos.add(clave)
-
-            comunicados_filtrados.sort(
-                key=parse_fecha,
-                reverse=True
+            clave = (
+                c.get('titulo'),
+                c.get('fecha'),
+                c.get('rol')
             )
 
-        except json.JSONDecodeError:
-            comunicados_filtrados = []
+            if clave in vistos:
+                continue
+
+            if c.get('rol') == 'Directivo':
+                comunicados_filtrados.append(c)
+                vistos.add(clave)
+
+            elif (
+                c.get('rol') == 'Preceptor'
+                and c.get('curso', '').strip().lower() == curso_alumno.strip().lower()
+            ):
+                comunicados_filtrados.append(c)
+                vistos.add(clave)
+
+    comunicados_filtrados.sort(
+        key=parse_fecha,
+        reverse=True
+    )
     panel_activo = request.session.pop("panel_activo", "inicio")
     
     cuotas_pendientes = Cuota.objects.filter(
@@ -1690,40 +1675,22 @@ def dashboard_preceptor(request):
     ).count()
     cursos_pendientes = []
 
-    if os.path.exists(COMUNICADOS_FILE):
+    comunicados = leer_archivo_json(COMUNICADOS_FILE)
 
-        try:
-
-            with open(
-                COMUNICADOS_FILE,
-                'r',
-                encoding='utf-8'
-            ) as f:
-
-                comunicados = json.load(f)
-
-                contador = 0
-
-                for comunicado in reversed(comunicados):
-
-                    if comunicado.get('rol') == 'Directivo':
-
-                    notificaciones.append({
-                        'tipo': 'comunicado',
-                        'icono': '📢',
-                        'color': '#dbeafe',
-                            'titulo': comunicado.get('titulo'),
-                            'mensaje': comunicado.get('contenido'),
-                            'fecha': comunicado.get('fecha')
-                        })
-
-                        contador += 1
-
-                        if contador == 3:
-                            break
-
-        except Exception:
-            pass
+    contador = 0
+    for comunicado in reversed(comunicados):
+        if comunicado.get('rol') == 'Directivo':
+            notificaciones.append({
+                'tipo': 'comunicado',
+                'icono': '📢',
+                'color': '#dbeafe',
+                'titulo': comunicado.get('titulo'),
+                'mensaje': comunicado.get('contenido'),
+                'fecha': comunicado.get('fecha')
+            })
+            contador += 1
+            if contador == 3:
+                break
     for curso in cursos:
 
         curso.asistencia_tomada = Asistencia.objects.filter(
@@ -1861,14 +1828,7 @@ def guardar_opinion(request):
             })
 
         # Leer opiniones existentes
-        if os.path.exists(OPINIONES_FILE) and os.path.getsize(OPINIONES_FILE) > 0:
-            try:
-                with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-                    opiniones = json.load(f)
-            except json.JSONDecodeError:
-                opiniones = []
-        else:
-            opiniones = []
+        opiniones = leer_archivo_json(OPINIONES_FILE)
 
         # Agregar la nueva opinión
         opiniones.append({
@@ -1878,8 +1838,7 @@ def guardar_opinion(request):
         })
 
         # Guardar en el archivo
-        with open(OPINIONES_FILE, 'w', encoding='utf-8') as f:
-            json.dump(opiniones, f, ensure_ascii=False, indent=2)
+        guardar_archivo_json(OPINIONES_FILE, opiniones)
 
         messages.success(
             request,
@@ -1935,18 +1894,7 @@ def crear_comunicado(request):
         if len(contenido_form) > 500:
             return redirect('dashboard-directivo')
 
-        comunicados = []
-
-        if os.path.exists(COMUNICADOS_FILE):
-            try:
-                with open(COMUNICADOS_FILE, 'r', encoding='utf-8') as f:
-                    file_content = f.read().strip()
-
-                    if file_content:
-                        comunicados = json.loads(file_content)
-
-            except json.JSONDecodeError:
-                comunicados = []
+        comunicados = leer_archivo_json(COMUNICADOS_FILE)
 
         curso_obj = None
 
@@ -1970,13 +1918,7 @@ def crear_comunicado(request):
 
         comunicados.append(nuevo_comunicado)
 
-        with open(COMUNICADOS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(
-                comunicados,
-                f,
-                ensure_ascii=False,
-                indent=2
-            )
+        guardar_archivo_json(COMUNICADOS_FILE, comunicados)
 
         if rol == "Preceptor":
             return redirect('dashboard-preceptor')
