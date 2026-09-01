@@ -1,262 +1,139 @@
-import requests
-from django.http import JsonResponse
+import json
+import os
 import re
-from django.core.files.storage import FileSystemStorage
-from datetime import datetime, date
+from datetime import date, datetime
+
 from django.conf import settings
-from datetime import date
-from django.shortcuts import redirect
+from django.contrib import messages
+from django.core.files.storage import FileSystemStorage
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-import re
-import resend
-import os
-from django.shortcuts import render, redirect
-from django.db.models import Avg
-import json
-from django.core.mail import EmailMessage
-from django.contrib import messages
-from django.utils import timezone
-from datetime import date
 from django.views.decorators.cache import never_cache
-from django.shortcuts import get_object_or_404, redirect
+
+from .forms import InscripcionForm
 from .models import (
-    Inscripcion,
-    Materia,
-    Curso,
-    Usuario,
-    Persona,
-    Directivo,
-    Docente,
     Alumno,
-    Preceptor,
+    Arancel,
+    Asistencia,
+    Calificacion,
     Curso,
+    CursoCursaMaterias,
+    Directivo,
+    DisciplinaDeportiva,
+    Docente,
+    DocenteDictaMateria,
+    DocumentacionAlumno,
+    Inscripcion,
+    Instalacion,
+    Materia,
+    Noticia,
+    PagoPendiente,
+    Persona,
+    PersonalAdministrativo,
+    PostulacionLaboral,
+    Preceptor,
+    Reserva,
+    SolicitudInscripcion,
+    Tarea,
     Tutor,
     TutorTutoraAlumno,
-    PersonalAdministrativo,
-    Noticia,
-    Calificacion,
-    Asistencia,
-    CursoCursaMaterias,
-    DocenteDictaMateria,
-    DisciplinaDeportiva,
-    Reserva,
-    Instalacion,
-    Persona,
-    Cuota,
-    PostulacionLaboral,
-    SolicitudInscripcion,
-    PagoPendiente,
-    Arancel,
-    DocumentacionAlumno,
-    Tarea,
+    Usuario,
 )
-COMUNICADOS_FILE = os.path.join(
-    os.path.dirname(__file__),
-    'comunicados.json'
-)
-import json
-import os
-from django.db.models import Avg
-from django.views.decorators.cache import never_cache
 
+COMUNICADOS_FILE = os.path.join(os.path.dirname(__file__), 'comunicados.json')
 OPINIONES_FILE = os.path.join(os.path.dirname(__file__), 'opiniones.json')
 
-def obtener_persona(request):
-    usuario_id = request.session.get('usuario_id')
 
+def obtener_persona(request):
+    """Obtiene la instancia de Persona asociada al usuario autenticado en la sesión."""
+    usuario_id = request.session.get('usuario_id')
     if not usuario_id:
         return None
+    usuario = Usuario.objects.filter(id=usuario_id).first()
+    return Persona.objects.filter(id_usuario=usuario).first() if usuario else None
 
-    usuario = Usuario.objects.get(id=usuario_id)
-    return Persona.objects.filter(id_usuario=usuario).first()
 
 def index(request):
+    """Página de inicio institucional."""
     usuario_datos = Usuario.objects.all()
     persona, dashboard_url = obtener_datos_sesion(request)
     return render(request, 'core/index.html', {
         'usuarios': usuario_datos,
         'persona': persona,
-        'dashboard_url': dashboard_url
+        'dashboard_url': dashboard_url,
     })
 
+
 def bienestar(request):
+    """Sección de bienestar escolar y servicios."""
     persona, dashboard_url = obtener_datos_sesion(request)
     return render(request, 'core/bienestar.html', {
         'persona': persona,
-        'dashboard_url': dashboard_url
+        'dashboard_url': dashboard_url,
     })
 
-def contacto(request):
-    opiniones = []
 
+def contacto(request):
+    """Página de contacto y visualización de opiniones recibidas."""
+    opiniones = []
     if os.path.exists(OPINIONES_FILE):
         try:
             with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
                 contenido = f.read().strip()
-
                 if contenido:
                     opiniones = json.loads(contenido)
                     opiniones.reverse()
-
         except (json.JSONDecodeError, FileNotFoundError):
             opiniones = []
 
     persona, dashboard_url = obtener_datos_sesion(request)
-
     return render(request, 'core/contacto.html', {
         'opiniones': opiniones,
         'persona': persona,
-        'dashboard_url': dashboard_url
+        'dashboard_url': dashboard_url,
     })
-
-_NOMBRE_REGEX = re.compile(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$')
-_DNI_REGEX = re.compile(r'^\d{7,8}$')
-_TELEFONO_REGEX = re.compile(r'^\d{8,15}$')
-_RANGOS_NIVEL = {
-    'inicial': (3, 5, 'Inicial'),
-    'primario': (6, 11, 'Primario'),
-    'secundario': (12, 18, 'Secundario'),
-}
-
-
-def _calcular_edad(fecha_nacimiento):
-    hoy = date.today()
-    edad = hoy.year - fecha_nacimiento.year
-    if (hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day):
-        edad -= 1
-    return edad
-
-
-def _validar_datos_inscripcion(post):
-    errores = []
-
-    campos_nombre = (
-        ('nombre', 'El nombre'),
-        ('apellido', 'El apellido'),
-        ('tutor', 'El nombre del tutor'),
-        ('apellido_tutor', 'El apellido del tutor'),
-    )
-    for campo, etiqueta in campos_nombre:
-        valor = (post.get(campo) or '').strip()
-        if not valor:
-            errores.append(f'{etiqueta} es obligatorio.')
-        elif not _NOMBRE_REGEX.match(valor):
-            errores.append(f'{etiqueta} solo puede contener letras.')
-
-    for campo, etiqueta in (('dni', 'El DNI'), ('dni_tutor', 'El DNI del tutor')):
-        valor = (post.get(campo) or '').strip()
-        if not _DNI_REGEX.match(valor):
-            errores.append(f'{etiqueta} debe tener 7 u 8 dígitos numéricos.')
-
-    direccion = (post.get('direccion') or '').strip()
-    if not direccion:
-        errores.append('La dirección del estudiante es obligatoria.')
-
-    telefono = (post.get('telefono') or '').strip()
-    if not _TELEFONO_REGEX.match(telefono):
-        errores.append(
-            'El teléfono debe contener solo números (entre 8 y 15 dígitos).'
-        )
-
-    telefono_alumno = (post.get('telefono_alumno') or '').strip()
-    if telefono_alumno and not _TELEFONO_REGEX.match(telefono_alumno):
-        errores.append(
-            'El teléfono del alumno debe contener solo números (entre 8 y 15 dígitos).'
-        )
-
-    nivel = post.get('nivel')
-    fecha_str = post.get('fecha')
-    if fecha_str and nivel in _RANGOS_NIVEL:
-        try:
-            fecha_nac = datetime.strptime(fecha_str, '%Y-%m-%d').date()
-            edad = _calcular_edad(fecha_nac)
-            min_edad, max_edad, label = _RANGOS_NIVEL[nivel]
-            if edad < min_edad or edad > max_edad:
-                errores.append(
-                    f'La edad ({edad} años) no corresponde al Nivel {label} '
-                    f'(de {min_edad} a {max_edad} años).'
-                )
-        except ValueError:
-            errores.append('La fecha de nacimiento no es válida.')
-
-    return errores
 
 
 def inscripcion(request):
-    # 1. Obtenemos los datos de sesión al inicio de la función
+    """Maneja la recepción de solicitudes de inscripción delegando
+    la validación y almacenamiento al formulario InscripcionForm.
+    """
     persona, dashboard_url = obtener_datos_sesion(request)
 
     if request.method == 'POST':
-        errores = _validar_datos_inscripcion(request.POST)
-        if errores:
-            return render(
-                request,
-                'core/inscripcion.html',
-                {
-                    'error': ' '.join(errores),
-                    'persona': persona,
-                    'dashboard_url': dashboard_url,
-                },
-            )
-
-        SolicitudInscripcion.objects.create(
-            nombre_alumno=request.POST.get('nombre'),
-            apellido_alumno=request.POST.get('apellido'),
-            dni_alumno=request.POST.get('dni'),
-            fecha_nacimiento=request.POST.get('fecha'),
-            direccion=request.POST.get('direccion'),
-            telefono_alumno=request.POST.get('telefono_alumno'),
-            email_alumno=request.POST.get('email_alumno'),
-
-            nivel=request.POST.get('nivel'),
-            turno=request.POST.get('turno'),
-
-            nombre_tutor=request.POST.get('tutor'),
-            apellido_tutor=request.POST.get('apellido_tutor'),
-            dni_tutor=request.POST.get('dni_tutor'),
-
-            parentesco=request.POST.get('parentesco'),
-
-            telefono=request.POST.get('telefono'),
-            email=request.POST.get('email'),
-            
-            direccion_tutor=request.POST.get("direccion_tutor"),
-
-            observaciones=request.POST.get('observaciones'),
-
-            fecha_solicitud=timezone.now(),
-
-            estado='Pendiente'
-        )
-
-        return render(
-            request,
-            'core/inscripcion.html',
-            {
+        form = InscripcionForm(request.POST)
+        if form.is_valid():
+            form.guardar_solicitud()
+            return render(request, 'core/inscripcion.html', {
                 'exito': True,
                 'persona': persona,
-                'dashboard_url': dashboard_url
-            }
-        )
-
-    return render(
-        request,
-        'core/inscripcion.html',
-        {
+                'dashboard_url': dashboard_url,
+            })
+        
+        errores = [err for lista in form.errors.values() for err in lista]
+        return render(request, 'core/inscripcion.html', {
+            'error': ' '.join(errores),
             'persona': persona,
-            'dashboard_url': dashboard_url
-        }
-    )
+            'dashboard_url': dashboard_url,
+        })
+
+    return render(request, 'core/inscripcion.html', {
+        'persona': persona,
+        'dashboard_url': dashboard_url,
+    })
+
 
 @never_cache
 def login(request):
+    """Garantiza la autenticación de usuarios y redirige según su rol asignado."""
     persona, dashboard_url = obtener_datos_sesion(request)
     if persona and dashboard_url and dashboard_url != 'login':
         return redirect(dashboard_url)
 
     if request.method == 'POST':
-        usuario_input = request.POST.get('usuario')
+        nombre_o_email = request.POST.get('usuario')
         password = request.POST.get('password')
         rol_input = request.POST.get('rol')
 
@@ -267,39 +144,33 @@ def login(request):
         try:
             try:
                 usuario = Usuario.objects.get(
-                    nombre_usuario=usuario_input,
+                    nombre_usuario=nombre_o_email,
                     contrasenia=password
                 )
             except Usuario.DoesNotExist:
                 usuario = Usuario.objects.get(
-                    correo=usuario_input,
+                    correo=nombre_o_email,
                     contrasenia=password
                 )
 
-            # 🔥 DETECTAR ROL POR TABLAS
             redireccion = 'login'
             rol_correcto = False
             
             if rol_input == 'administrativo' and PersonalAdministrativo.objects.filter(id_persona__id_usuario=usuario).exists():
                 rol_correcto = True
                 redireccion = 'dashboard-administrativo'
-                
             elif rol_input == 'docente' and Docente.objects.filter(id_persona__id_usuario=usuario).exists():
                 rol_correcto = True
                 redireccion = 'dashboard-docente'
-                
             elif rol_input == 'padre' and Tutor.objects.filter(id_persona__id_usuario=usuario).exists():
                 rol_correcto = True
                 redireccion = 'dashboard-padres'
-                
             elif rol_input == 'preceptor' and Preceptor.objects.filter(id_persona__id_usuario=usuario).exists():
                 rol_correcto = True
                 redireccion = 'dashboard-preceptor'
-                
             elif rol_input == 'directivo' and Directivo.objects.filter(id_persona__id_usuario=usuario).exists():
                 rol_correcto = True
                 redireccion = 'dashboard-directivo'
-                
             elif rol_input == 'alumno' and Alumno.objects.filter(id_persona__id_usuario=usuario).exists():
                 rol_correcto = True
                 redireccion = 'dashboard-alumno'
@@ -318,25 +189,228 @@ def login(request):
 
     return render(request, 'core/login.html')
 
+
 @never_cache
 def niveles(request):
+    """Informa los niveles educativos ofrecidos por la institución."""
     persona, dashboard_url = obtener_datos_sesion(request)
     return render(request, 'core/niveles.html', {
         'persona': persona,
         'dashboard_url': dashboard_url
     })
 
+
 def noticias(request):
-    noticias = Noticia.objects.all().order_by('-id_noticia')
+    """Lista las noticias públicas ordenadas de más recientes a más antiguas."""
+    noticias_lista = Noticia.objects.all().order_by('-id_noticia')
     persona, dashboard_url = obtener_datos_sesion(request)
     return render(request, 'core/noticias.html', {
-        'noticias': noticias,
+        'noticias': noticias_lista,
         'persona': persona,
         'dashboard_url': dashboard_url
     })
 
+
+def normalizar_nombre_dia(dia_raw):
+    """Normaliza variantes del nombre de un día de la semana para estructurar horarios."""
+    nombre_dia = dia_raw.strip().lower()
+    if nombre_dia in ('miercoles', 'miércoles'):
+        return 'miércoles'
+    mapping = {
+        'lunes': 'lunes',
+        'martes': 'martes',
+        'miércoles': 'miércoles',
+        'miercoles': 'miércoles',
+        'jueves': 'jueves',
+        'viernes': 'viernes'
+    }
+    return mapping.get(nombre_dia, nombre_dia)
+
+
+def _obtener_resumen_horarios(materias, disciplina, disciplinas_disponibles):
+    """Procesa los horarios JSON de materias y disciplinas deportivas."""
+    horario_por_dia = {
+        'lunes': [],
+        'martes': [],
+        'miércoles': [],
+        'jueves': [],
+        'viernes': []
+    }
+
+    for materia in materias:
+        if materia.horarios:
+            try:
+                horarios = json.loads(materia.horarios)
+                horario_items = []
+                for dia, hora in horarios.items():
+                    dia_norm = normalizar_nombre_dia(dia)
+                    horario_items.append(f"{dia_norm.capitalize()}: {hora}")
+                    if dia_norm in horario_por_dia:
+                        horario_por_dia[dia_norm].append({
+                            'materia': materia.id_materia.nombre,
+                            'hora': hora
+                        })
+                materia.horario_formateado = " | ".join(horario_items)
+            except Exception:
+                materia.horario_formateado = str(materia.horarios)
+        else:
+            materia.horario_formateado = "Sin horario"
+
+    disciplina_horario_formateado = "Sin horario"
+    if disciplina:
+        if disciplina.horarios:
+            try:
+                horarios_disciplina = json.loads(disciplina.horarios)
+                horario_items = []
+                for dia, hora in horarios_disciplina.items():
+                    dia_norm = normalizar_nombre_dia(dia)
+                    horario_items.append(f"{dia_norm.capitalize()}: {hora}")
+                    if dia_norm in horario_por_dia:
+                        horario_por_dia[dia_norm].append({
+                            'materia': disciplina.nombre,
+                            'hora': hora,
+                            'es_deporte': True,
+                        })
+                disciplina_horario_formateado = " | ".join(horario_items)
+            except Exception:
+                disciplina_horario_formateado = str(disciplina.horarios)
+
+    for disciplina_disponible in disciplinas_disponibles:
+        if disciplina_disponible.horarios:
+            try:
+                horarios_dep = json.loads(disciplina_disponible.horarios)
+                horario_items = []
+                for dia, hora in horarios_dep.items():
+                    dia_norm = normalizar_nombre_dia(dia)
+                    horario_items.append(f"{dia_norm.capitalize()}: {hora}")
+                disciplina_disponible.horario_formateado = " | ".join(horario_items)
+            except Exception:
+                disciplina_disponible.horario_formateado = str(disciplina_disponible.horarios)
+        else:
+            disciplina_disponible.horario_formateado = "Sin horario"
+
+    hay_horarios = any(clases for clases in horario_por_dia.values())
+    return horario_por_dia, disciplina_horario_formateado, hay_horarios
+
+
+def _calcular_resumen_notas(materias, calificaciones):
+    """Calcula promedios y construye la estructura de notas trimestrales."""
+    notas_resumen = []
+    for curso_materia in materias:
+        materia_instancia = curso_materia.id_materia
+        califs_mat = calificaciones.filter(id_materia=materia_instancia).order_by('fecha')
+
+        trim1, trim2, trim3 = '', '', ''
+        numeric_notes = []
+        estado = ''
+
+        for calificacion in califs_mat:
+            display_val = (
+                float(calificacion.nota)
+                if calificacion.nota is not None
+                else (calificacion.tipo_evaluacion or '')
+            )
+
+            if calificacion.tipo_evaluacion == '1° Bimestre':
+                trim1 = display_val
+            elif calificacion.tipo_evaluacion == '2° Bimestre':
+                trim2 = display_val
+            elif calificacion.tipo_evaluacion == '3° Bimestre':
+                trim3 = display_val
+            else:
+                if not trim1:
+                    trim1 = display_val
+                elif not trim2:
+                    trim2 = display_val
+                elif not trim3:
+                    trim3 = display_val
+
+            if calificacion.nota is not None:
+                try:
+                    numeric_notes.append(float(calificacion.nota))
+                except Exception:
+                    pass
+
+            if calificacion.tipo_evaluacion and 'aprob' in calificacion.tipo_evaluacion.lower():
+                estado = 'Aprobado'
+
+        promedio_mat = round(sum(numeric_notes) / len(numeric_notes), 2) if numeric_notes else ''
+        notas_resumen.append({
+            'materia': materia_instancia.nombre,
+            'trim1': trim1,
+            'trim2': trim2,
+            'trim3': trim3,
+            'promedio': promedio_mat,
+            'estado': estado or 'En curso'
+        })
+
+    all_numeric = [float(calificacion.nota) for calificacion in calificaciones if calificacion.nota is not None]
+    promedio_general = round(sum(all_numeric) / len(all_numeric), 1) if all_numeric else 0
+    materias_aprobadas = sum(1 for item in notas_resumen if item.get('estado') == 'Aprobado')
+    total_materias = len(notas_resumen)
+
+    return notas_resumen, promedio_general, materias_aprobadas, total_materias
+
+
+def _procesar_justificacion_asistencia(request, alumno, persona):
+    """Gestiona la subida de comprobantes de inasistencia del alumno."""
+    asistencia_id = request.POST.get('asistencia_id')
+    asistencia = Asistencia.objects.filter(
+        id_asistencia=asistencia_id,
+        legajo_alumno=alumno
+    ).first()
+
+    if not asistencia:
+        request.session["panel_activo"] = "asistencia"
+        messages.error(request, 'No se encontró la asistencia seleccionada.')
+        return redirect('dashboard-alumno')
+
+    if asistencia.archivo_justificacion:
+        request.session["panel_activo"] = "asistencia"
+        messages.error(request, 'Esta asistencia ya posee una justificación.')
+        return redirect('dashboard-alumno')
+
+    archivo = request.FILES['justificacion']
+    extensiones_permitidas = ['.pdf', '.jpg', '.jpeg', '.png']
+    tipos_permitidos = ['application/pdf', 'image/jpeg', 'image/png']
+
+    if archivo.content_type not in tipos_permitidos:
+        request.session["panel_activo"] = "asistencia"
+        messages.error(request, 'Tipo de archivo no válido.')
+        return redirect('dashboard-alumno')
+
+    if archivo.size > 5 * 1024 * 1024:
+        request.session["panel_activo"] = "asistencia"
+        messages.error(request, 'El archivo no puede superar los 5 MB.')
+        return redirect('dashboard-alumno')
+
+    extension = os.path.splitext(archivo.name)[1].lower()
+    if extension not in extensiones_permitidas:
+        request.session["panel_activo"] = "asistencia"
+        messages.error(request, 'Solo se permiten archivos PDF, JPG, JPEG y PNG.')
+        return redirect('dashboard-alumno')
+
+    nombre_alumno = f"{persona.nombre}_{persona.apellido}".replace(" ", "_")
+    curso = f"{alumno.id_curso.anio}{alumno.id_curso.comision}"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nombre_archivo = f"{nombre_alumno}_{curso}_{asistencia.fecha}_{timestamp}{extension}"
+
+    carpeta = os.path.join(settings.MEDIA_ROOT, 'justificaciones')
+    os.makedirs(carpeta, exist_ok=True)
+    fs = FileSystemStorage(location=carpeta)
+    fs.save(nombre_archivo, archivo)
+
+    asistencia.archivo_justificacion = f"justificaciones/{nombre_archivo}"
+    asistencia.save()
+
+    request.session["panel_activo"] = "asistencia"
+    messages.success(request, 'Justificación enviada correctamente.')
+    return redirect('dashboard-alumno')
+
+
 @never_cache
 def dashboard_alumno(request):
+    """Panel principal para el alumno: materias, horarios, calificaciones, asistencias y comunicados."""
     persona, dashboard_url = obtener_datos_sesion(request)
     if not persona:
         return redirect('login')
@@ -376,7 +450,6 @@ def dashboard_alumno(request):
 
         alumno.id_disciplina = disciplina_elegida
         alumno.save(update_fields=['id_disciplina'])
-
         messages.success(
             request,
             f'Te inscribiste correctamente en {disciplina_elegida.nombre}.'
@@ -384,218 +457,20 @@ def dashboard_alumno(request):
         return redirect('dashboard-alumno')
 
     if request.method == 'POST' and request.FILES.get('justificacion'):
-
-        asistencia_id = request.POST.get('asistencia_id')
-
-        asistencia = Asistencia.objects.filter(
-            id_asistencia=asistencia_id,
-            legajo_alumno=alumno
-        ).first()
-        if not asistencia:
-            request.session["panel_activo"] = "asistencia"
-            messages.error(
-                request,
-                'No se encontró la asistencia seleccionada.'
-            )
-            return redirect('dashboard-alumno')
-        if asistencia.archivo_justificacion:
-            request.session["panel_activo"] = "asistencia"
-            messages.error(
-                request,
-                'Esta asistencia ya posee una justificación.'
-            )
-            return redirect('dashboard-alumno')
-        if asistencia:
-
-            archivo = request.FILES['justificacion']
-            extensiones_permitidas = [
-                '.pdf',
-                '.jpg',
-                '.jpeg',
-                '.png'
-            ]
-            tipos_permitidos = [
-                'application/pdf',
-                'image/jpeg',
-                'image/png'
-            ]
-
-            if archivo.content_type not in tipos_permitidos:
-                request.session["panel_activo"] = "asistencia"
-                messages.error(
-                    request,
-                    'Tipo de archivo no válido.'
-                )
-                return redirect('dashboard-alumno')
-            if archivo.size > 5 * 1024 * 1024:
-                request.session["panel_activo"] = "asistencia"
-                messages.error(
-                    request,
-                    'El archivo no puede superar los 5 MB.'
-                )
-                return redirect('dashboard-alumno')
-            extension = os.path.splitext(
-                archivo.name
-            )[1].lower()
-
-            if extension not in extensiones_permitidas:
-                request.session["panel_activo"] = "asistencia"
-                messages.error(
-                    request,
-                    'Solo se permiten archivos PDF, JPG, JPEG y PNG.'
-                )
-                return redirect('dashboard-alumno')
-            nombre_alumno = (
-                f"{persona.nombre}_{persona.apellido}"
-                .replace(" ", "_")
-            )
-
-            curso = f"{alumno.id_curso.anio}{alumno.id_curso.comision}"
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-            nombre_archivo = (
-                f"{nombre_alumno}_{curso}_{asistencia.fecha}_{timestamp}"
-                f"{extension}"
-            )
-
-            carpeta = os.path.join(
-                settings.MEDIA_ROOT,
-                'justificaciones'
-            )
-
-            os.makedirs(
-                carpeta,
-                exist_ok=True
-            )
-
-            fs = FileSystemStorage(
-                location=carpeta
-            )
-
-            fs.save(
-                nombre_archivo,
-                archivo
-            )
-
-            asistencia.archivo_justificacion = (
-                f"justificaciones/{nombre_archivo}"
-            )
-
-            asistencia.save()
-
-            request.session["panel_activo"] = "asistencia"
-
-            messages.success(
-                request,
-                'Justificación enviada correctamente.'
-            )
-
-            return redirect('dashboard-alumno')
-
+        return _procesar_justificacion_asistencia(request, alumno, persona)
 
     curso_alumno = f"{alumno.id_curso.nivel} {alumno.id_curso.anio}° {alumno.id_curso.comision}"
-    
     materias = CursoCursaMaterias.objects.filter(
         id_curso=alumno.id_curso
     ).select_related('id_materia')
-    
-    # Procesar horarios para mostrar en el panel
-    # Inicializar días en orden
-    horario_por_dia = {
-        'lunes': [],
-        'martes': [],
-        'miércoles': [],
-        'jueves': [],
-        'viernes': []
-    }
-
-    # Función para normalizar nombres de días (maneja variantes sin tilde)
-    def _normalize_dia(dia_raw):
-        d = dia_raw.strip().lower()
-        if d in ('miercoles', 'miercoles'):
-            return 'miércoles'
-        if d == 'miercoles':
-            return 'miércoles'
-        # cubrir otras variantes comunes
-        mapping = {
-            'lunes': 'lunes',
-            'martes': 'martes',
-            'miércoles': 'miércoles',
-            'miercoles': 'miércoles',
-            'jueves': 'jueves',
-            'viernes': 'viernes'
-        }
-        return mapping.get(d, d)
-
-    # Llenar con datos de las materias
-    for materia in materias:
-        if materia.horarios:
-            try:
-                horarios = json.loads(materia.horarios)
-
-                # Crear formato legible
-                horario_items = []
-                for dia, hora in horarios.items():
-                    dia_norm = _normalize_dia(dia)
-                    horario_items.append(f"{dia_norm.capitalize()}: {hora}")
-
-                    # Agregar a la lista de horarios por día si corresponde
-                    if dia_norm in horario_por_dia:
-                        horario_por_dia[dia_norm].append({
-                            'materia': materia.id_materia.nombre,
-                            'hora': hora
-                        })
-
-                materia.horario_formateado = " | ".join(horario_items)
-
-            except Exception:
-                materia.horario_formateado = str(materia.horarios)
-        else:
-            materia.horario_formateado = "Sin horario"
 
     disciplina = alumno.id_disciplina
-    disciplina_horario_formateado = "Sin horario"
+    disciplinas_disponibles = DisciplinaDeportiva.objects.select_related('id_instalacion').all()
 
-    if disciplina:
-        if disciplina.horarios:
-            try:
-                horarios_disciplina = json.loads(disciplina.horarios)
-                horario_items = []
-                for dia, hora in horarios_disciplina.items():
-                    dia_norm = _normalize_dia(dia)
-                    horario_items.append(f"{dia_norm.capitalize()}: {hora}")
+    horario_por_dia, disciplina_horario_formateado, hay_horarios = _obtener_resumen_horarios(
+        materias, disciplina, disciplinas_disponibles
+    )
 
-                    if dia_norm in horario_por_dia:
-                        horario_por_dia[dia_norm].append({
-                            'materia': disciplina.nombre,
-                            'hora': hora,
-                            'es_deporte': True,
-                        })
-
-                disciplina_horario_formateado = " | ".join(horario_items)
-            except Exception:
-                disciplina_horario_formateado = str(disciplina.horarios)
-
-    disciplinas_disponibles = DisciplinaDeportiva.objects.select_related(
-        'id_instalacion'
-    ).all()
-
-    for dep in disciplinas_disponibles:
-        if dep.horarios:
-            try:
-                horarios_dep = json.loads(dep.horarios)
-                horario_items = []
-                for dia, hora in horarios_dep.items():
-                    dia_norm = _normalize_dia(dia)
-                    horario_items.append(f"{dia_norm.capitalize()}: {hora}")
-                dep.horario_formateado = " | ".join(horario_items)
-            except Exception:
-                dep.horario_formateado = str(dep.horarios)
-        else:
-            dep.horario_formateado = "Sin horario"
-            
-    
     tutor_relacion = TutorTutoraAlumno.objects.filter(
         id_alumno=alumno
     ).select_related(
@@ -603,7 +478,6 @@ def dashboard_alumno(request):
         'id_tutor__id_persona'
     ).first()
 
-    
     calificaciones = Calificacion.objects.filter(
         legajo_alumno=alumno
     ).select_related('id_materia')
@@ -612,150 +486,61 @@ def dashboard_alumno(request):
         legajo_alumno=alumno
     ).order_by('-fecha')
 
-    presentes = asistencias.filter(
-        tipo_asistencia='Presente'
-    ).count()
+    presentes = asistencias.filter(tipo_asistencia='Presente').count()
+    ausencias = asistencias.filter(tipo_asistencia='Ausente').count()
+    tardanzas = asistencias.filter(tipo_asistencia='Tardanza').count()
 
-    ausencias = asistencias.filter(
-        tipo_asistencia='Ausente'
-    ).count()
-
-    tardanzas = asistencias.filter(
-        tipo_asistencia='Tardanza'
-    ).count()
-
-    # Porcentaje de asistencia (presente / total registros)
     total_asistencias = presentes + ausencias + tardanzas
-    if total_asistencias > 0:
-        asistencia_pct = round((presentes / total_asistencias) * 100)
-    else:
-        asistencia_pct = 0
+    asistencia_pct = round((presentes / total_asistencias) * 100) if total_asistencias > 0 else 0
 
-    # Agrupar calificaciones por materia para el panel de notas
-    from collections import OrderedDict
-
-    from collections import OrderedDict
-
-    notas_resumen = []
-    # Iterar por las materias asignadas al curso
-    for curso_materia in materias:
-        mat = curso_materia.id_materia
-        califs_mat = calificaciones.filter(id_materia=mat).order_by('fecha')
-
-        trim1 = ''
-        trim2 = ''
-        trim3 = ''
-        numeric_notes = []
-        estado = ''
-
-        for c in califs_mat:
-            display_val = float(c.nota) if c.nota is not None else (c.tipo_evaluacion or '')
-
-            # Asignar según tipo de evaluación
-            if c.tipo_evaluacion == '1° Bimestre':
-                trim1 = display_val
-            elif c.tipo_evaluacion == '2° Bimestre':
-                trim2 = display_val
-            elif c.tipo_evaluacion == '3° Bimestre':
-                trim3 = display_val
-            else:
-                # Fallback por compatibilidad
-                if not trim1:
-                    trim1 = display_val
-                elif not trim2:
-                    trim2 = display_val
-                elif not trim3:
-                    trim3 = display_val
-
-            if c.nota is not None:
-                try:
-                    numeric_notes.append(float(c.nota))
-                except Exception:
-                    pass
-
-            if c.tipo_evaluacion and 'aprob' in c.tipo_evaluacion.lower():
-                estado = 'Aprobado'
-
-        promedio_mat = round(sum(numeric_notes) / len(numeric_notes), 2) if numeric_notes else ''
-
-        notas_resumen.append({
-            'materia': mat.nombre,
-            'trim1': trim1,
-            'trim2': trim2,
-            'trim3': trim3,
-            'promedio': promedio_mat,
-            'estado': estado or 'En curso'
-        })
-
-    # Promedio general del alumno (promedio de todas las calificaciones numéricas)
-    all_numeric = [float(c.nota) for c in calificaciones if c.nota is not None]
-    promedio_general = round(sum(all_numeric) / len(all_numeric), 1) if all_numeric else 0
-
-    # Materias aprobadas: sólo se cuentan si hay un registro cuyo tipo indica 'Aprobado'
-    materias_aprobadas = sum(1 for n in notas_resumen if n.get('estado') == 'Aprobado')
-    total_materias = len(notas_resumen)
-    COMUNICADOS_FILE = os.path.join(
-        settings.BASE_DIR,
-        "core",
-        "comunicados.json"
+    notas_resumen, promedio_general, materias_aprobadas, total_materias = _calcular_resumen_notas(
+        materias, calificaciones
     )
 
-    comunicados_alumno = []
-    ultimos_comunicados = []
+    comunicados_file_path = os.path.join(settings.BASE_DIR, "core", "comunicados.json")
+    comunicados_alumno, ultimos_comunicados = [], []
 
-    if os.path.exists(COMUNICADOS_FILE):
+    if os.path.exists(comunicados_file_path):
         try:
-            with open(COMUNICADOS_FILE, 'r', encoding='utf-8') as f:
+            with open(comunicados_file_path, 'r', encoding='utf-8') as f:
                 file_content = f.read().strip()
                 comunicados = json.loads(file_content) if file_content else []
-
                 comunicados_alumno = [
-                    c for c in comunicados
+                    item for item in comunicados
                     if (
-                        c.get('rol') == 'Directivo'
+                        item.get('rol') == 'Directivo'
                         or (
-                            c.get('rol') == 'Preceptor'
-                            and c.get('curso', '').strip().lower() == curso_alumno.strip().lower()
+                            item.get('rol') == 'Preceptor'
+                            and item.get('curso', '').strip().lower() == curso_alumno.strip().lower()
                         )
                     )
                 ]
-
-                
                 comunicados_alumno.reverse()
-
-            
             ultimos_comunicados = comunicados_alumno[:3]
-
         except json.JSONDecodeError:
-            comunicados_alumno = []
-            ultimos_comunicados = []
+            comunicados_alumno, ultimos_comunicados = [], []
     
     tareas_alumno = []
     if materias.exists():
         for curso_materia in materias:
-            materia_real = curso_materia.id_materia
+            materia_instancia = curso_materia.id_materia
             tarea_materia = Tarea.objects.filter(
-                materia=materia_real,
+                materia=materia_instancia,
                 curso_destinado=alumno.id_curso
             ).select_related('docente', 'docente__id_persona', 'curso_destinado').order_by('-fecha_creacion')
             
             for tarea in tarea_materia:
                 tareas_alumno.append({
                     'tarea': tarea,
-                    'materia_nombre': materia_real.nombre,
+                    'materia_nombre': materia_instancia.nombre,
                     'docente_nombre': f'{tarea.docente.id_persona.apellido} {tarea.docente.id_persona.nombre}',
                     'curso_destinado': tarea.curso_destinado.comision if tarea.curso_destinado else '-',
                 })
     tareas_alumno.sort(key=lambda x: x['tarea'].fecha_creacion, reverse=True)
 
     panel_activo = request.session.pop("panel_activo", "inicio")
-    hay_horarios = any(clases for clases in horario_por_dia.values())
-    
-    alumno = Alumno.objects.select_related(
-        'id_curso'
-    ).get(
-        id_persona=persona
-    )
+    alumno = Alumno.objects.select_related('id_curso').get(id_persona=persona)
+
     return render(request, 'core/dashboard-alumno.html', {
         'persona': persona,
         'alumno': alumno,
@@ -781,6 +566,7 @@ def dashboard_alumno(request):
         "panel_activo": panel_activo,
         'tareas_alumno': tareas_alumno,
     })
+
 
 @never_cache
 def dashboard_docente(request):
