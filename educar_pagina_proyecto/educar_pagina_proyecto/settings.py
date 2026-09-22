@@ -33,7 +33,12 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "10.0.2.2",
     "192.168.0.50",
+    "192.168.3.3",
 ]
+
+# En desarrollo, permitir cualquier IP local para facilitar el trabajo en equipo
+if DEBUG:
+    ALLOWED_HOSTS.append("*")
 
 # Application definition
 
