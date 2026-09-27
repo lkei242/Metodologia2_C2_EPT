@@ -6,10 +6,14 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from django.db.models import Q
 
 
 class Alumno(models.Model):
+    ESTADOS = [("Activo", "Activo"), ("Inactivo", "Inactivo")]
     legajo = models.AutoField(primary_key=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Activo")
+    inscripto_comedor = models.BooleanField(default=False)
     id_persona = models.ForeignKey('Persona', models.DO_NOTHING, db_column='id_persona')
     fecha_ingreso = models.DateField(blank=True, null=True)
     id_disciplina = models.ForeignKey(
@@ -193,7 +197,9 @@ class DisciplinaDeportiva(models.Model):
 
 
 class Docente(models.Model):
+    ESTADOS = [("Activo", "Activo"), ("Inactivo", "Inactivo")]
     legajo = models.AutoField(primary_key=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Activo")
     id_persona = models.ForeignKey('Persona', models.DO_NOTHING, db_column='id_persona')
     titulo = models.CharField(max_length=100)
     especialidad = models.CharField(max_length=100, blank=True, null=True)
@@ -211,6 +217,94 @@ class DocenteDictaMateria(models.Model):
     class Meta:
         managed = True
         db_table = 'docente_dicta_materia'
+
+
+class DocenteCursoMateria(models.Model):
+    docente = models.ForeignKey(Docente, on_delete=models.PROTECT, related_name='asignaciones_academicas')
+    curso = models.ForeignKey(Curso, on_delete=models.PROTECT, related_name='asignaciones_docentes')
+    materia = models.ForeignKey('Materia', on_delete=models.PROTECT, related_name='asignaciones_docentes')
+
+    class Meta:
+        db_table = 'docente_curso_materia'
+        constraints = [
+            models.UniqueConstraint(fields=['docente', 'curso', 'materia'], name='uniq_docente_curso_materia'),
+        ]
+
+    def __str__(self):
+        return f"{self.docente} - {self.materia} - {self.curso}"
+
+
+class GrupoDeportivo(models.Model):
+    DIAS = [(d, d) for d in ("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")]
+    disciplina = models.ForeignKey(DisciplinaDeportiva, on_delete=models.PROTECT, related_name="grupos")
+    nivel = models.CharField(max_length=30)
+    dia_semana = models.CharField(max_length=12, choices=DIAS)
+    hora_inicio = models.TimeField()
+    hora_fin = models.TimeField()
+    profesor_responsable = models.ForeignKey(Docente, on_delete=models.PROTECT, related_name="grupos_deportivos")
+
+    class Meta:
+        db_table = "grupo_deportivo"
+        constraints = [models.UniqueConstraint(fields=["disciplina", "nivel", "dia_semana", "hora_inicio", "hora_fin"], name="uniq_grupo_deportivo_horario")]
+        ordering = ["disciplina__nombre", "nivel", "dia_semana", "hora_inicio"]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.hora_inicio and self.hora_fin and self.hora_fin <= self.hora_inicio:
+            raise ValidationError({"hora_fin": "La hora de fin debe ser posterior al inicio."})
+
+    def __str__(self):
+        return f"{self.disciplina} - {self.nivel} - {self.dia_semana} {self.hora_inicio:%H:%M}"
+
+
+class InscripcionDeportiva(models.Model):
+    ESTADOS = [("Activa", "Activa"), ("Finalizada", "Finalizada")]
+    alumno = models.ForeignKey(Alumno, on_delete=models.PROTECT, related_name="inscripciones_deportivas")
+    grupo = models.ForeignKey(GrupoDeportivo, on_delete=models.PROTECT, related_name="inscripciones")
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Activa")
+    fecha_inscripcion = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "inscripcion_deportiva"
+        constraints = [models.UniqueConstraint(fields=["alumno", "grupo"], condition=Q(estado="Activa"), name="uniq_inscripcion_deportiva_activa")]
+
+
+class RecorridoTransporte(models.Model):
+    nombre = models.CharField(max_length=40, unique=True)
+    descripcion = models.CharField(max_length=200, blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "recorrido_transporte"
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+
+class InscripcionTransporte(models.Model):
+    ESTADOS = [("Activa", "Activa"), ("Finalizada", "Finalizada")]
+    alumno = models.ForeignKey(Alumno, on_delete=models.PROTECT, related_name="inscripciones_transporte")
+    recorrido = models.ForeignKey(RecorridoTransporte, on_delete=models.PROTECT, related_name="inscripciones")
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Activa")
+    fecha_inscripcion = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "inscripcion_transporte"
+        constraints = [models.UniqueConstraint(fields=["alumno"], condition=Q(estado="Activa"), name="uniq_transporte_activo_por_alumno")]
+
+
+class AuditoriaCambio(models.Model):
+    usuario = models.ForeignKey("Usuario", on_delete=models.SET_NULL, null=True, blank=True, related_name="cambios_auditados")
+    fecha = models.DateTimeField(auto_now_add=True)
+    entidad = models.CharField(max_length=80)
+    registro_id = models.CharField(max_length=80)
+    accion = models.CharField(max_length=30)
+    campos = models.JSONField(default=list)
+
+    class Meta:
+        db_table = "auditoria_cambio"
+        ordering = ["-fecha", "-pk"]
 
 
 class DocenteDisciplina(models.Model):
@@ -333,6 +427,13 @@ class Inscripcion(models.Model):
     class Meta:
         managed = True
         db_table = 'inscripcion'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['legajo_alumno'],
+                condition=Q(estado='Activa'),
+                name='uniq_inscripcion_activa_por_alumno',
+            ),
+        ]
 
 
 class Instalacion(models.Model):

@@ -1,0 +1,30 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ titulo }} | Gestión académica</title>
+  <link rel="stylesheet" href="{% static 'core/css/gestion.css' %}">
+</head>
+<body>
+  <main class="wrap narrow">
+    <nav><a href="{% url 'gestion-inicio' %}">Gestión</a> / {{ titulo }}</nav>
+    <h1>{{ titulo }}</h1>
+    {% if descripcion %}<p class="intro">{{ descripcion }}</p>{% endif %}
+    {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <div class="field">
+          {{ field.label_tag }} {{ field }}
+          {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+          {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+        </div>
+      {% endfor %}
+      <div class="actions"><button type="submit">Guardar</button><a class="button secondary" href="{% url 'gestion-inicio' %}">Cancelar</a></div>
+    </form>
+  </main>
+</body>
+</html>

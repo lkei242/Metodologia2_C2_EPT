@@ -1056,16 +1056,42 @@
   transition: all 0.2s ease;
 }
 
+.dashboard-administrativo .login {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.login .btn-gestion,
 .login .btn-logout {
   text-decoration: none;
-  color: #e61c92;            /* Color rosa/magenta en las letras */
-  border: 2px solid #e61c92; /* Borde rosa/magenta */
+  border: 2px solid;
   padding: 8px 22px;
   border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
   transition: all 0.3s ease;
   display: inline-block;     /* Asegura que el botón se renderice bien */
+}
+
+.login .btn-gestion {
+  color: #1d66c2;
+  border-color: #1d66c2;
+}
+
+.login .btn-gestion:hover {
+  background: #1d66c2;
+  color: white;
+  border-color: #1d66c2;
+  box-shadow: 0 4px 15px rgba(29, 102, 194, 0.2);
+  transform: translateY(-1px);
+}
+
+.login .btn-logout {
+  color: #e61c92;
+  border-color: #e61c92;
 }
 /* Hover exclusivo para cerrar sesión */
 .login .btn-logout:hover {

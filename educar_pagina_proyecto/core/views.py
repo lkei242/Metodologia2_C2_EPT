@@ -2,15 +2,19 @@ import json
 import os
 import re
 from datetime import date, datetime
+from functools import wraps
 
 from django.conf import settings
 from django.contrib import messages
+from django.db import IntegrityError, transaction
+from django.db.models import Avg
 from django.core.files.storage import FileSystemStorage
-from django.http import JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 
 from .forms import InscripcionForm
 from .models import (
@@ -18,6 +22,7 @@ from .models import (
     Arancel,
     Asistencia,
     Calificacion,
+    Cuota,
     Curso,
     CursoCursaMaterias,
     Directivo,
@@ -53,6 +58,21 @@ def obtener_persona(request):
         return None
     usuario = Usuario.objects.filter(id=usuario_id).first()
     return Persona.objects.filter(id_usuario=usuario).first() if usuario else None
+
+
+def requiere_roles(*roles_permitidos):
+    """Protege acciones sensibles usando el rol resuelto en el servidor."""
+    def decorar(vista):
+        @wraps(vista)
+        def protegida(request, *args, **kwargs):
+            persona, rol = obtener_datos_sesion(request)
+            if not persona:
+                return redirect(f"{reverse('login')}?next={request.path}")
+            if rol not in roles_permitidos:
+                return HttpResponseForbidden("No tiene permisos para realizar esta acción.")
+            return vista(request, *args, **kwargs)
+        return protegida
+    return decorar
 
 
 def index(request):
@@ -1097,108 +1117,79 @@ def dashboard_administrativo(request):
     })
 
 @never_cache
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def aprobar_inscripcion(request, id_solicitud):
+    solicitud = get_object_or_404(SolicitudInscripcion, id_solicitud=id_solicitud)
+    if solicitud.estado != "Pendiente":
+        messages.error(request, "La solicitud ya fue procesada.")
+        return redirect("dashboard-administrativo")
+    try:
+        with transaction.atomic():
+            solicitud = SolicitudInscripcion.objects.select_for_update().get(pk=id_solicitud)
+            if solicitud.estado != "Pendiente":
+                raise ValueError("La solicitud ya fue procesada.")
+            if Alumno.objects.filter(id_persona__dni=solicitud.dni_alumno).exists():
+                raise ValueError("Ya existe un alumno con el DNI informado; revise la solicitud.")
 
-    solicitud = SolicitudInscripcion.objects.get(
-        id_solicitud=id_solicitud
-    )
+            hoy = date.today()
+            edad = hoy.year - solicitud.fecha_nacimiento.year - ((hoy.month, hoy.day) < (solicitud.fecha_nacimiento.month, solicitud.fecha_nacimiento.day))
+            nivel = solicitud.nivel.strip().lower()
+            anio = max(1, min(7, edad - 5)) if nivel == "primario" else max(1, min(5, edad - 12))
+            curso = Curso.objects.select_for_update().filter(nivel__iexact=solicitud.nivel, turno__iexact=solicitud.turno, anio=anio).order_by("comision").first()
+            if not curso:
+                raise ValueError("No hay un curso compatible con el nivel, turno y edad indicados.")
 
-    persona_alumno = Persona.objects.create(
-        dni=solicitud.dni_alumno,
-        nombre=solicitud.nombre_alumno,
-        apellido=solicitud.apellido_alumno,
-        fecha_nacimiento=solicitud.fecha_nacimiento,
-        direccion=solicitud.direccion,
-        telefono=solicitud.telefono_alumno or solicitud.telefono,
-        email=solicitud.email_alumno or solicitud.email
-    )
-
-    persona_tutor = Persona.objects.create(
-        dni=solicitud.dni_tutor,
-        nombre=solicitud.nombre_tutor,
-        apellido=solicitud.apellido_tutor,
-        fecha_nacimiento=date(2000, 1, 1),
-        telefono=solicitud.telefono,
-        email=solicitud.email,
-        direccion=solicitud.direccion_tutor,
-    )
-
-    tutor = Tutor.objects.create(
-        id_persona=persona_tutor,
-        telefono_contacto=solicitud.telefono,
-        email_contacto=solicitud.email
-    )
-    
-    hoy = date.today()
-
-    edad = (
-        hoy.year
-        - solicitud.fecha_nacimiento.year
-        - (
-            (hoy.month, hoy.day)
-            <
-            (
-                solicitud.fecha_nacimiento.month,
-                solicitud.fecha_nacimiento.day
+            persona_alumno = Persona.objects.create(
+                dni=solicitud.dni_alumno, nombre=solicitud.nombre_alumno,
+                apellido=solicitud.apellido_alumno, fecha_nacimiento=solicitud.fecha_nacimiento,
+                direccion=solicitud.direccion, telefono=solicitud.telefono_alumno or solicitud.telefono,
+                email=solicitud.email_alumno or solicitud.email,
             )
-        )
-    )
-
-    nivel = solicitud.nivel.strip().lower()
-
-    if nivel == "primario":
-        anio = max(1, min(7, edad - 5))
+            persona_tutor = Persona.objects.filter(dni=solicitud.dni_tutor).first()
+            if not persona_tutor:
+                persona_tutor = Persona.objects.create(
+                    dni=solicitud.dni_tutor, nombre=solicitud.nombre_tutor,
+                    apellido=solicitud.apellido_tutor, fecha_nacimiento=date(2000, 1, 1),
+                    telefono=solicitud.telefono, email=solicitud.email,
+                    direccion=solicitud.direccion_tutor,
+                )
+            tutor, _ = Tutor.objects.get_or_create(
+                id_persona=persona_tutor,
+                defaults={"telefono_contacto": solicitud.telefono, "email_contacto": solicitud.email},
+            )
+            alumno = Alumno.objects.create(id_persona=persona_alumno, fecha_ingreso=hoy, id_curso=curso, estado="Activo")
+            TutorTutoraAlumno.objects.get_or_create(id_tutor=tutor, id_alumno=alumno, defaults={"tipo_parentesco": solicitud.parentesco})
+            Inscripcion.objects.create(fecha_inscripcion=hoy, estado="Activa", id_curso=curso, legajo_alumno=alumno)
+            solicitud.estado = "Aprobada"
+            solicitud.save(update_fields=["estado"])
+            from .domain_services import publicar_cambio
+            publicar_cambio(request, "SolicitudInscripcion", solicitud.pk, "aprobar", ["alumno", "tutor", "curso", "inscripción"])
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    except IntegrityError:
+        messages.error(request, "No se pudo aprobar: se detectó un DNI duplicado o una relación inconsistente.")
     else:
-        anio = max(1, min(5, edad - 12))
+        messages.success(request, f"Solicitud aprobada. Legajo del alumno: {alumno.legajo}.")
+    return redirect("dashboard-administrativo")
 
-    curso = Curso.objects.filter(
-        nivel__iexact=solicitud.nivel,
-        turno__iexact=solicitud.turno,
-        anio=anio
-    ).order_by('comision').first()
-
-    if not curso:
-        solicitud.estado = 'Error'
-        solicitud.save()
-
-        return redirect('dashboard-administrativo')
-
-    alumno = Alumno.objects.create(
-        id_persona=persona_alumno,
-        fecha_ingreso=date.today(),
-        id_curso=curso
-    )
-
-    TutorTutoraAlumno.objects.create(
-        id_tutor=tutor,
-        id_alumno=alumno,
-        tipo_parentesco=solicitud.parentesco,
-    )
-
-    Inscripcion.objects.create(
-        fecha_inscripcion=date.today(),
-        estado='Activa',
-        id_curso=curso,
-        legajo_alumno=alumno
-    )
-
-    solicitud.delete()
-
-    return redirect('dashboard-administrativo')
-
-@never_cache
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def rechazar_inscripcion(request, id_solicitud):
-
-    solicitud = get_object_or_404(
-        SolicitudInscripcion,
-        id_solicitud=id_solicitud
-    )
-
-    solicitud.delete()
+    solicitud = get_object_or_404(SolicitudInscripcion, id_solicitud=id_solicitud)
+    if solicitud.estado != "Pendiente":
+        messages.error(request, "La solicitud ya fue procesada.")
+    else:
+        solicitud.estado = "Rechazada"
+        solicitud.save(update_fields=["estado"])
+        from .domain_services import publicar_cambio
+        publicar_cambio(request, "SolicitudInscripcion", solicitud.pk, "rechazar", ["estado"])
 
     return redirect('dashboard-administrativo')
 
 @never_cache
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def crear_reserva(request):
     print(request.POST)
 
@@ -1317,6 +1308,8 @@ def eliminar_opinion(request, indice):
     return redirect('dashboard-administrativo')
 
 @never_cache
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def crear_usuario(request):
 
     if request.method == "POST":
@@ -1360,6 +1353,16 @@ def crear_usuario(request):
             return redirect("dashboard-administrativo")
         
         correo = request.POST.get("correo")
+
+        if not nombre_usuario or not contrasenia or not correo:
+            messages.error(request, "Complete usuario, contraseña y correo.", extra_tags="usuarios")
+            request.session["panel_activo"] = "usuarios"
+            return redirect("dashboard-administrativo")
+
+        if len(nombre_usuario) > 60 or len(contrasenia) > 20 or len(correo) > 100:
+            messages.error(request, "Los datos superan el máximo de caracteres permitido.", extra_tags="usuarios")
+            request.session["panel_activo"] = "usuarios"
+            return redirect("dashboard-administrativo")
         
         if Usuario.objects.filter(correo=correo).exists():
             messages.error(
@@ -1370,14 +1373,20 @@ def crear_usuario(request):
             request.session["panel_activo"] = "usuarios"
             return redirect("dashboard-administrativo")
 
-        usuario = Usuario.objects.create(
-            nombre_usuario=nombre_usuario,
-            contrasenia=contrasenia,
-            correo=correo
-        )
-
-        persona.id_usuario = usuario
-        persona.save()
+        try:
+            with transaction.atomic():
+                persona = Persona.objects.select_for_update().get(pk=persona.pk)
+                if persona.id_usuario_id:
+                    raise ValueError("La persona ya tiene un usuario asignado.")
+                usuario = Usuario.objects.create(nombre_usuario=nombre_usuario, contrasenia=contrasenia, correo=correo)
+                persona.id_usuario = usuario
+                persona.save(update_fields=["id_usuario"])
+                from .domain_services import publicar_cambio
+                publicar_cambio(request, "Usuario", usuario.pk, "crear", ["usuario", "persona"])
+        except (IntegrityError, ValueError) as exc:
+            messages.error(request, str(exc) or "No se pudo crear el usuario.", extra_tags="usuarios")
+            request.session["panel_activo"] = "usuarios"
+            return redirect("dashboard-administrativo")
 
         messages.success(
             request,
@@ -2020,12 +2029,15 @@ def crear_comunicado(request):
             return redirect('dashboard-directivo')
         
 @never_cache
+@require_POST
 def registrar_pago(request):
 
-    persona = obtener_persona(request)
+    persona, rol = obtener_datos_sesion(request)
 
     if not persona:
         return redirect('login')
+    if rol != "dashboard-padres":
+        return HttpResponseForbidden("Solo un tutor autenticado puede registrar pagos de sus hijos.")
 
     tutor = Tutor.objects.filter(
         id_persona=persona
@@ -2038,6 +2050,9 @@ def registrar_pago(request):
             alumno = Alumno.objects.get(
                 legajo=request.POST.get('alumno')
             )
+
+            if not tutor or not TutorTutoraAlumno.objects.filter(id_tutor=tutor, id_alumno=alumno).exists():
+                return HttpResponseForbidden("Solo puede gestionar pagos de hijos vinculados a su cuenta.")
 
             curso = alumno.id_curso
 
@@ -2121,6 +2136,8 @@ def registrar_pago(request):
     return redirect('dashboard-padres')
 
 @never_cache
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def aprobar_pago(request, id_pago):
 
     pago = PagoPendiente.objects.get(
@@ -2141,6 +2158,8 @@ def aprobar_pago(request, id_pago):
 
     return redirect('dashboard-administrativo')
 
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def rechazar_pago(request, id_pago):
 
     pago = PagoPendiente.objects.get(
@@ -2159,11 +2178,20 @@ def enviar_documentacion(request):
     if request.method != 'POST':
         return redirect('dashboard-padres')
 
+    persona, rol = obtener_datos_sesion(request)
+    if not persona:
+        return redirect('login')
+    if rol != "dashboard-padres":
+        return HttpResponseForbidden("Solo un tutor autenticado puede enviar documentación.")
+    tutor = Tutor.objects.filter(id_persona=persona).first()
+
     try:
 
         alumno = Alumno.objects.get(
             legajo=request.POST.get('alumno')
         )
+        if not tutor or not TutorTutoraAlumno.objects.filter(id_tutor=tutor, id_alumno=alumno).exists():
+            return HttpResponseForbidden("Solo puede enviar documentación de hijos vinculados a su cuenta.")
 
         doc_existente = DocumentacionAlumno.objects.filter(
             legajo_alumno=alumno
@@ -2303,6 +2331,8 @@ def enviar_documentacion(request):
     return redirect('dashboard-padres')
 
 @never_cache
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def aprobar_documentacion(request, id_documentacion):
 
     doc = get_object_or_404(
@@ -2326,6 +2356,8 @@ def aprobar_documentacion(request, id_documentacion):
     return redirect('dashboard-administrativo')
 
 
+@require_POST
+@requiere_roles("dashboard-administrativo")
 def rechazar_documentacion(request, id_documentacion):
 
     doc = DocumentacionAlumno.objects.get(

@@ -51,7 +51,7 @@
     });
   </script>
 
-  <body>
+  <body class="dashboard-administrativo">
     <div class="page">
       <header>
         <a href="{% url 'index' %}" class="brand">
@@ -63,6 +63,7 @@
         </a>
         <nav></nav>
         <div class="login">
+          <a href="{% url 'gestion-inicio' %}" class="btn-gestion">Gestión de alumnos, docentes y cursos</a>
           <a href="#" onclick="abrirModalCerrarSesion()" class="btn-logout"
             >Cerrar sesión</a
           >

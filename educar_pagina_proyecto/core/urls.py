@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from . import management_views
+from . import service_views, reporting_views
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -42,6 +44,19 @@ urlpatterns = [
     path('aprobar-documentacion/<int:id_documentacion>/',views.aprobar_documentacion,name='aprobar_documentacion'),
     path('rechazar-documentacion/<int:id_documentacion>/',views.rechazar_documentacion,name='rechazar_documentacion'),
     path('crear-usuario/',views.crear_usuario,name='crear-usuario'),
+    # Sprint 1: gestión académica protegida por rol administrativo
+    path('gestion/', management_views.gestion_inicio, name='gestion-inicio'),
+    path('gestion/alumnos/nuevo/', management_views.gestion_alumno_nuevo, name='gestion-alumno-nuevo'),
+    path('gestion/alumnos/<int:legajo>/editar/', management_views.gestion_alumno_editar, name='gestion-alumno-editar'),
+    path('gestion/docentes/nuevo/', management_views.gestion_docente_nuevo, name='gestion-docente-nuevo'),
+    path('gestion/docentes/<int:legajo>/editar/', management_views.gestion_docente_editar, name='gestion-docente-editar'),
+    path('gestion/academica/', management_views.gestion_academica, name='gestion-academica'),
+    path('gestion/inscripciones/nueva/', management_views.gestion_inscripcion, name='gestion-inscripcion'),
+    path('gestion/servicios/', service_views.gestion_servicios, name='gestion-servicios'),
+    path('gestion/deportes/<int:inscripcion_id>/finalizar/', service_views.finalizar_inscripcion_deportiva, name='gestion-deporte-finalizar'),
+    path('familia/servicios/', service_views.familia_servicios, name='familia-servicios'),
+    path('reportes/', reporting_views.reportes, name='reportes'),
+    path('auditoria/', reporting_views.auditoria, name='auditoria'),
     path('rechazar-pago/<int:id_pago>/',views.rechazar_pago,name='rechazar-pago'),
     # Comunicaciones - noticias y comunicados
     path('contacto/opinion/', views.guardar_opinion, name='guardar-opinion'),
