@@ -1,0 +1,42 @@
+name: CI - Educar Web
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: educar_pagina_proyecto
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: educar_pagina_proyecto/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Verificación de calidad del código (check de Django)
+        run: python manage.py check
+
+      - name: Verificación de coherencia de migraciones
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Recolección de archivos estáticos (manifest de WhiteNoise)
+        run: python manage.py collectstatic --noinput
+
+      - name: Ejecución de pruebas automatizadas (HU-01 Alumnos y resto del backlog)
+        run: python manage.py test --verbosity=2
+        env:
+          DEBUG: 'True'
