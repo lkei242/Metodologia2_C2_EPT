@@ -17,6 +17,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from .forms import InscripcionForm
+from .seguridad import guardar_contrasenia, verificar_contrasenia
 from .models import (
     Alumno,
     Arancel,
@@ -162,16 +163,12 @@ def login(request):
                 'error': 'Debe seleccionar un tipo de usuario.'
             })
         try:
-            try:
-                usuario = Usuario.objects.get(
-                    nombre_usuario=nombre_o_email,
-                    contrasenia=password
-                )
-            except Usuario.DoesNotExist:
-                usuario = Usuario.objects.get(
-                    correo=nombre_o_email,
-                    contrasenia=password
-                )
+            usuario = (
+                Usuario.objects.filter(nombre_usuario=nombre_o_email).first()
+                or Usuario.objects.filter(correo=nombre_o_email).first()
+            )
+            if usuario is None or not verificar_contrasenia(usuario, password):
+                raise Usuario.DoesNotExist
 
             redireccion = 'login'
             rol_correcto = False
@@ -1378,7 +1375,7 @@ def crear_usuario(request):
                 persona = Persona.objects.select_for_update().get(pk=persona.pk)
                 if persona.id_usuario_id:
                     raise ValueError("La persona ya tiene un usuario asignado.")
-                usuario = Usuario.objects.create(nombre_usuario=nombre_usuario, contrasenia=contrasenia, correo=correo)
+                usuario = Usuario.objects.create(nombre_usuario=nombre_usuario, contrasenia=guardar_contrasenia(contrasenia), correo=correo)
                 persona.id_usuario = usuario
                 persona.save(update_fields=["id_usuario"])
                 from .domain_services import publicar_cambio

@@ -24,5 +24,10 @@ media/
 Thumbs.db
 desktop.ini
 
+# Archivos estáticos generados por collectstatic
+staticfiles/
+
 # Variables sensibles
 .env
+.env.*
+!.env.example

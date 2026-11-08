@@ -110,7 +110,8 @@ class Cuota(models.Model):
         max_digits=10,
         decimal_places=2
     )
-    fecha_pago = models.DateField()
+    fecha_pago = models.DateField(blank=True, null=True)
+    fecha_vencimiento = models.DateField(blank=True, null=True)
     medio_pago = models.CharField(
         max_length=50,
         blank=True,
@@ -118,7 +119,7 @@ class Cuota(models.Model):
     )
     estado = models.CharField(
         max_length=30,
-        default='Pagada'
+        default='Pendiente'
     )
     id_tutor = models.ForeignKey(
         'Tutor',
@@ -182,6 +183,7 @@ class DisciplinaDeportiva(models.Model):
     id_disciplina = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
     horarios = models.TextField(blank=True, null=True)
+    valor = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     id_instalacion = models.ForeignKey(
         'Instalacion',
         models.DO_NOTHING,
@@ -272,6 +274,7 @@ class InscripcionDeportiva(models.Model):
 class RecorridoTransporte(models.Model):
     nombre = models.CharField(max_length=40, unique=True)
     descripcion = models.CharField(max_length=200, blank=True)
+    valor = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     activo = models.BooleanField(default=True)
 
     class Meta:
@@ -610,7 +613,7 @@ class TutorTutoraAlumno(models.Model):
 class Usuario(models.Model):
     id = models.AutoField(primary_key=True)
     nombre_usuario = models.CharField(unique=True, max_length=60)
-    contrasenia = models.CharField(max_length=20)
+    contrasenia = models.CharField(max_length=128)  # hash de Django (ver core/seguridad.py)
     correo = models.CharField(unique=True, max_length=100, blank=True, null=True)
 
     class Meta:
@@ -782,6 +785,109 @@ class Arancel(models.Model):
         managed = True
         db_table = 'arancel'
         
+class ValorComedor(models.Model):
+    """Valor mensual del servicio de comedor (único para todo el colegio)."""
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        db_table = 'valor_comedor'
+
+
+class Factura(models.Model):
+    """Factura mensual de un alumno, emitida a su tutor.
+
+    El total se calcula en el backend a partir de los ítems; la app solo lo muestra.
+    """
+    ESTADOS = [("Pendiente", "Pendiente"), ("Parcial", "Parcial"), ("Pagada", "Pagada")]
+
+    alumno = models.ForeignKey(Alumno, on_delete=models.PROTECT, related_name="facturas")
+    tutor = models.ForeignKey(Tutor, on_delete=models.PROTECT, related_name="facturas")
+    periodo = models.CharField(max_length=7, help_text="Formato AAAA-MM")
+    emision = models.DateField()
+    vencimiento = models.DateField()
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Pendiente")
+
+    class Meta:
+        db_table = "factura"
+        ordering = ["-periodo"]
+        constraints = [
+            models.UniqueConstraint(fields=["alumno", "periodo"], name="uniq_factura_alumno_periodo"),
+        ]
+
+    def __str__(self):
+        return f"Factura {self.periodo} - legajo {self.alumno_id}"
+
+
+class ItemFactura(models.Model):
+    """Concepto de una factura: cuota, deporte, transporte o comedor."""
+    TIPOS = [("cuota", "Cuota"), ("deporte", "Deporte"), ("transporte", "Transporte"), ("comedor", "Comedor")]
+
+    factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name="items")
+    tipo = models.CharField(max_length=20, choices=TIPOS)
+    descripcion = models.CharField(max_length=200)
+    importe = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        db_table = "item_factura"
+
+
+def ruta_comprobante(instance, filename):
+    """Nombre aleatorio: el archivo original del tutor no se usa en disco."""
+    import os
+    import uuid
+    extension = os.path.splitext(filename)[1].lower()
+    return f"comprobantes/{instance.factura.periodo}/{uuid.uuid4().hex}{extension}"
+
+
+class ComprobantePago(models.Model):
+    """Comprobante de transferencia cargado por el tutor. Una factura puede tener varios."""
+    ESTADOS = [("Pendiente", "Pendiente"), ("Aprobado", "Aprobado"), ("Rechazado", "Rechazado")]
+
+    factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name="comprobantes")
+    archivo = models.FileField(upload_to=ruta_comprobante)
+    importe = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_carga = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Pendiente")
+    subido_por = models.ForeignKey(
+        "Usuario", on_delete=models.SET_NULL, null=True, blank=True, related_name="comprobantes_subidos"
+    )
+
+    class Meta:
+        db_table = "comprobante_pago"
+        ordering = ["-fecha_carga"]
+
+
+class SolicitudPago(models.Model):
+    """Pedido de pago de un tutor sobre ítems de una factura. El total lo calcula el servidor.
+
+    La clave de idempotencia evita duplicados si la app reintenta la misma solicitud.
+    Además, no puede haber dos solicitudes pendientes sobre la misma factura.
+    """
+    ESTADOS = [("Pendiente", "Pendiente"), ("Pagada", "Pagada"), ("Cancelada", "Cancelada")]
+
+    factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name="solicitudes_pago")
+    items = models.ManyToManyField(ItemFactura, related_name="solicitudes_pago")
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    clave_idempotencia = models.CharField(max_length=64, unique=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Pendiente")
+    creada_por = models.ForeignKey(
+        "Usuario", on_delete=models.SET_NULL, null=True, blank=True, related_name="solicitudes_pago"
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "solicitud_pago"
+        ordering = ["-fecha"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["factura"],
+                condition=Q(estado="Pendiente"),
+                name="uniq_solicitud_pendiente_por_factura",
+            ),
+        ]
+
+
 class DocumentacionAlumno(models.Model):
     id_documentacion = models.AutoField(
         primary_key=True

@@ -1,0 +1,19 @@
+{% load static %}<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Comprobantes pendientes</title><link rel="stylesheet" href="{% static 'core/css/gestion.css' %}"></head>
+<body><main class="wrap"><nav><a href="{% url 'gestion-inicio' %}">Gestión</a> / Comprobantes</nav><h1>Comprobantes de transferencia pendientes</h1>
+{% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+<section><div class="table-scroll"><table><thead><tr><th>Fecha de carga</th><th>Alumno</th><th>Período</th><th>Total factura</th><th>Importe informado</th><th>Archivo</th><th>Decisión</th></tr></thead><tbody>
+{% for c in comprobantes %}<tr>
+<td>{{ c.fecha_carga|date:"d/m/Y H:i" }}</td>
+<td>{{ c.factura.alumno.id_persona.apellido }}, {{ c.factura.alumno.id_persona.nombre }} (legajo {{ c.factura.alumno_id }})</td>
+<td>{{ c.factura.periodo }}</td>
+<td>${{ c.factura.total }}</td>
+<td>${{ c.importe }}</td>
+<td><a href="{% url 'comprobante-archivo-web' c.pk %}" target="_blank" rel="noopener">Ver</a></td>
+<td>
+<form method="post" action="{% url 'aprobar-comprobante' c.pk %}" style="display:inline">{% csrf_token %}<button>Aprobar</button></form>
+<form method="post" action="{% url 'rechazar-comprobante' c.pk %}" style="display:inline">{% csrf_token %}<button class="danger">Rechazar</button></form>
+</td></tr>
+{% empty %}<tr><td colspan="7" class="empty">No hay comprobantes pendientes.</td></tr>{% endfor %}
+</tbody></table></div></section>
+<a href="{% url 'gestion-inicio' %}">Volver a gestión</a></main></body></html>
