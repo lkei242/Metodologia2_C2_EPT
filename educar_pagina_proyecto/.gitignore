@@ -31,3 +31,6 @@ staticfiles/
 .env
 .env.*
 !.env.example
+
+# Volcados de datos (contienen datos personales)
+respaldo_core.json
