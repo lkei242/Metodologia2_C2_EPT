@@ -613,7 +613,7 @@ class TutorTutoraAlumno(models.Model):
 class Usuario(models.Model):
     id = models.AutoField(primary_key=True)
     nombre_usuario = models.CharField(unique=True, max_length=60)
-    contrasenia = models.CharField(max_length=20)
+    contrasenia = models.CharField(max_length=128)  # hash de Django (ver core/seguridad.py)
     correo = models.CharField(unique=True, max_length=100, blank=True, null=True)
 
     class Meta:
@@ -833,7 +833,11 @@ class ItemFactura(models.Model):
 
 
 def ruta_comprobante(instance, filename):
-    return f"comprobantes/{instance.factura.periodo}/{filename}"
+    """Nombre aleatorio: el archivo original del tutor no se usa en disco."""
+    import os
+    import uuid
+    extension = os.path.splitext(filename)[1].lower()
+    return f"comprobantes/{instance.factura.periodo}/{uuid.uuid4().hex}{extension}"
 
 
 class ComprobantePago(models.Model):
@@ -852,6 +856,36 @@ class ComprobantePago(models.Model):
     class Meta:
         db_table = "comprobante_pago"
         ordering = ["-fecha_carga"]
+
+
+class SolicitudPago(models.Model):
+    """Pedido de pago de un tutor sobre ítems de una factura. El total lo calcula el servidor.
+
+    La clave de idempotencia evita duplicados si la app reintenta la misma solicitud.
+    Además, no puede haber dos solicitudes pendientes sobre la misma factura.
+    """
+    ESTADOS = [("Pendiente", "Pendiente"), ("Pagada", "Pagada"), ("Cancelada", "Cancelada")]
+
+    factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name="solicitudes_pago")
+    items = models.ManyToManyField(ItemFactura, related_name="solicitudes_pago")
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    clave_idempotencia = models.CharField(max_length=64, unique=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="Pendiente")
+    creada_por = models.ForeignKey(
+        "Usuario", on_delete=models.SET_NULL, null=True, blank=True, related_name="solicitudes_pago"
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "solicitud_pago"
+        ordering = ["-fecha"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["factura"],
+                condition=Q(estado="Pendiente"),
+                name="uniq_solicitud_pendiente_por_factura",
+            ),
+        ]
 
 
 class DocumentacionAlumno(models.Model):

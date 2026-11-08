@@ -5,6 +5,8 @@ from . import service_views, reporting_views
 from django.conf import settings
 from django.conf.urls.static import static
 
+from . import comprobantes_web
+
 urlpatterns = [
     path('', views.index, name='index'),
 
@@ -66,6 +68,11 @@ urlpatterns = [
     path('postulacion/programar-publicacion', views.programar_publicacion, name='programar_publicacion'),
     path('rechazar-inscripcion/<int:id_solicitud>/',views.rechazar_inscripcion,name='rechazar-inscripcion'),
     path('guardar-observacion-justificacion/', views.guardar_observacion_justificacion, name='guardar-observacion-justificacion'),
+    # Comprobantes de transferencia (aprobación del personal administrativo)
+    path('comprobantes/pendientes/', comprobantes_web.comprobantes_pendientes, name='comprobantes-pendientes'),
+    path('comprobantes/<int:id_comprobante>/archivo/', comprobantes_web.comprobante_archivo_web, name='comprobante-archivo-web'),
+    path('comprobantes/<int:id_comprobante>/aprobar/', comprobantes_web.aprobar_comprobante, name='aprobar-comprobante'),
+    path('comprobantes/<int:id_comprobante>/rechazar/', comprobantes_web.rechazar_comprobante, name='rechazar-comprobante'),
 ]
 if settings.DEBUG:
     urlpatterns += static(
