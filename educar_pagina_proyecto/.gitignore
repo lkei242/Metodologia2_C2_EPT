@@ -11,6 +11,9 @@ __pycache__/
 # Archivos media subidos por usuarios
 media/
 
+# Archivos estáticos generados
+staticfiles/
+
 # Archivos temporales
 *.log
 

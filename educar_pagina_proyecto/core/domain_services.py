@@ -34,9 +34,17 @@ class AuditoriaObserver:
 _AUDITORIA = AuditoriaObserver()
 
 
-def publicar_cambio(request, entidad, registro_id, accion, campos):
+def publicar_cambio(request_o_usuario, entidad, registro_id, accion, campos):
+    usuario_id = None
+    if hasattr(request_o_usuario, "session"):
+        usuario_id = request_o_usuario.session.get("usuario_id")
+    elif hasattr(request_o_usuario, "id"):
+        usuario_id = request_o_usuario.id
+    elif isinstance(request_o_usuario, int):
+        usuario_id = request_o_usuario
+
     cambio = CambioConfirmado(
-        usuario_id=request.session.get("usuario_id"),
+        usuario_id=usuario_id,
         entidad=entidad,
         registro_id=str(registro_id),
         accion=accion,
@@ -52,7 +60,6 @@ def inscribir_en_deporte(alumno_id, grupo_id, confirmar_migracion=False):
         actuales = list(InscripcionDeportiva.objects.select_for_update().filter(alumno=alumno, estado="Activa").select_related("grupo"))
 
         legacy = alumno.id_disciplina_id
-        grupos_actuales = {row.grupo_id for row in actuales}
         if any(row.grupo.disciplina_id == grupo.disciplina_id for row in actuales):
             raise ReglaNegocioError("El alumno ya participa en ese deporte.")
         if legacy and legacy != grupo.disciplina_id:
@@ -95,3 +102,11 @@ def asignar_transporte(alumno_id, recorrido_id):
         if recorrido_id is not None and (not actuales or actuales[0].recorrido_id != recorrido_id):
             return InscripcionTransporte.objects.create(alumno=alumno, recorrido_id=recorrido_id, estado="Activa")
         return actuales[0] if actuales and recorrido_id is not None else None
+
+
+def gestionar_comedor(alumno_id, inscripto: bool):
+    with transaction.atomic():
+        alumno = Alumno.objects.select_for_update().get(pk=alumno_id)
+        alumno.inscripto_comedor = bool(inscripto)
+        alumno.save(update_fields=["inscripto_comedor"])
+        return alumno

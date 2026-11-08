@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 
 from . import views
 
@@ -8,4 +8,5 @@ urlpatterns = [
     path('logout/', views.logout, name='api-logout'),
     path('recuperar-contrasena/', views.recuperar_contrasena, name='api-recuperar-contrasena'),
     path('perfil/', views.perfil, name='api-perfil'),
+    path('servicios/', include('api.urls_servicios')),
 ]

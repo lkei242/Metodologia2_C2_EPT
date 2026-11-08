@@ -53,6 +53,7 @@ urlpatterns = [
     path('gestion/academica/', management_views.gestion_academica, name='gestion-academica'),
     path('gestion/inscripciones/nueva/', management_views.gestion_inscripcion, name='gestion-inscripcion'),
     path('gestion/servicios/', service_views.gestion_servicios, name='gestion-servicios'),
+    path('gestion/valores/', service_views.gestion_valores, name='gestion-valores'),
     path('gestion/deportes/<int:inscripcion_id>/finalizar/', service_views.finalizar_inscripcion_deportiva, name='gestion-deporte-finalizar'),
     path('familia/servicios/', service_views.familia_servicios, name='familia-servicios'),
     path('reportes/', reporting_views.reportes, name='reportes'),
