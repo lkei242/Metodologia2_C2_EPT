@@ -9,11 +9,12 @@
 </head>
 
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
 
   <div class="page">
     {% include 'core/plantillas/cabecera.html' %}
 
-    <main>
+    <main id="contenido-principal" tabindex="-1">
 
       <section class="hero">
         <h1>Contacto</h1>
@@ -174,7 +175,7 @@
         <div class="form-card">
           <h2>Dejar una opinión</h2>
           {% if error_opinion %}
-          <div style="background:#fee2e2; color:#991b1b; border-radius:8px; padding:12px; margin-bottom:16px;">
+          <div style="background:#fee2e2; color:#991b1b; border-radius:10px; padding:15px; margin-bottom:20px;">
             {{ error_opinion }}
           </div>
           {% endif %}

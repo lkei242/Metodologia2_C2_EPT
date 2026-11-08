@@ -9,14 +9,15 @@
 </head>
 
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
 
   <div class="page">
     {% include 'core/plantillas/cabecera.html' %}
 
-    <main>
+    <main id="contenido-principal" tabindex="-1">
       <section class="cards">
         <div class="card">
-            <img src="{% static 'core/IMG/apoyo.jpg' %}" alt="Apoyo estudiantil" class="card-image">
+            <img src="{% static 'core/IMG/apoyo.jpg' %}" alt="Apoyo estudiantil" class="card-image" width="760" height="428" loading="lazy" decoding="async">
             <div class="card-content">
             <div class="card-title">
                 <div class="icon icon-green">♡</div>
@@ -31,7 +32,7 @@
         </div>
 
         <div class="card">
-            <img src="{% static 'core/IMG/idiomas.jpg' %}" alt="Idiomas" class="card-image">
+            <img src="{% static 'core/IMG/idiomas.jpg' %}" alt="Idiomas" class="card-image" width="1500" height="976" loading="lazy" decoding="async">
 
             <div class="card-content">
             <div class="card-title">
@@ -47,7 +48,7 @@
         </div>
 
         <div class="card">
-            <img src="{% static 'core/IMG/enfermeria.jpg' %}" alt="Enfermería" class="card-image">
+            <img src="{% static 'core/IMG/enfermeria.jpg' %}" alt="Enfermería" class="card-image" width="760" height="428" loading="lazy" decoding="async">
 
             <div class="card-content">
             <div class="card-title">
@@ -66,7 +67,7 @@
 
       <section class="cards">
         <div class="card">
-            <img src="{% static 'core/IMG/deportes.jpg' %}" alt="Deportes" class="card-image">
+            <img src="{% static 'core/IMG/deportes.jpg' %}" alt="Deportes" class="card-image" width="713" height="475" loading="lazy" decoding="async">
           <div class="card-content">
             <div class="card-title">
               <div class="icon icon-blue">⚽</div>
@@ -80,7 +81,7 @@
         </div>
 
         <div class="card">
-            <img src="{% static 'core/IMG/comedor.jpg' %}" alt="Comedor" class="card-image">
+            <img src="{% static 'core/IMG/comedor.jpg' %}" alt="Comedor" class="card-image" width="640" height="360" loading="lazy" decoding="async">
           <div class="card-content">
             <div class="card-title">
               <div class="icon icon-green">🍽</div>
@@ -94,7 +95,7 @@
         </div>
 
         <div class="card">
-            <img src="{% static 'core/IMG/traslado.jpg' %}" alt="Micros de traslado" class="card-image">
+            <img src="{% static 'core/IMG/traslado.jpg' %}" alt="Micros de traslado" class="card-image" width="760" height="428" loading="lazy" decoding="async">
           <div class="card-content">
             <div class="card-title">
               <div class="icon icon-pink">🚌</div>

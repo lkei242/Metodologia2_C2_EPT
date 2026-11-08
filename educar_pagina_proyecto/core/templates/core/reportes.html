@@ -1,6 +1,7 @@
 {% load static %}<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ codigo }} {{ titulo }}</title><link rel="stylesheet" href="{% static 'core/css/gestion.css' %}"></head>
-<body><main class="wrap"><nav><a href="{% url 'gestion-inicio' %}">Gestión</a> / Reportes</nav><h1>Reportes</h1>
+<body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a><main id="contenido-principal" class="wrap" tabindex="-1"><nav><a href="{% url 'gestion-inicio' %}">Gestión</a> / Reportes</nav><h1>Reportes</h1>
 <form method="get" class="filters">
 {% if admin %}<label>Reporte<select name="reporte">{% for id,nombre in reportes.items %}<option value="{{ id }}" {% if codigo == id %}selected{% endif %}>{{ id }} - {{ nombre }}</option>{% endfor %}</select></label>{% else %}<input type="hidden" name="reporte" value="{{ codigo }}">{% endif %}
 {% if admin or selector_alumno %}<label>Alumno<select name="alumno"><option value="">{% if admin %}Todos{% else %}Seleccione su hijo/a{% endif %}</option>{% for a in alumnos %}<option value="{{ a.pk }}" {% if filtros.alumno == a.pk|stringformat:"s" %}selected{% endif %}>{{ a.id_persona.apellido }}, {{ a.id_persona.nombre }} ({{ a.legajo }})</option>{% endfor %}</select></label>{% endif %}

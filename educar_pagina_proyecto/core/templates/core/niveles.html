@@ -9,9 +9,10 @@
 </head>
 
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
   <div class="page">
     {% include 'core/plantillas/cabecera.html' %}
-  <main>
+  <main id="contenido-principal" tabindex="-1">
     <section class="niveles-section">
 
       <h2>Niveles Educativos</h2>
@@ -19,12 +20,12 @@
           Conocé las distintas etapas de formación que ofrece nuestra institución.
       </p>
 
-      <div class="niveles-slider">
+      <div class="niveles-slider" role="region" aria-label="Niveles educativos">
 
           <!-- Inicial -->
-          <div class="nivel-slide active">
+          <div class="nivel-slide active" role="group" aria-roledescription="diapositiva" aria-label="Nivel inicial" aria-hidden="false">
 
-              <img src="{% static 'core/IMG/inicial.jpg' %}" alt="Nivel Inicial">
+              <img src="{% static 'core/IMG/inicial.jpg' %}" alt="Nivel Inicial" width="2400" height="1350" decoding="async" fetchpriority="high">
 
               <div class="nivel-content">
                   <h3>Nivel Inicial</h3>
@@ -54,9 +55,9 @@
           </div>
 
           <!-- Primario -->
-          <div class="nivel-slide">
+          <div class="nivel-slide" role="group" aria-roledescription="diapositiva" aria-label="Nivel primario" aria-hidden="true">
 
-              <img src="{% static 'core/IMG/primaria.jpg' %}" alt="Nivel Primario">
+              <img src="{% static 'core/IMG/primaria.jpg' %}" alt="Nivel Primario" width="765" height="510" loading="lazy" decoding="async">
 
               <div class="nivel-content">
                   <h3>Nivel Primario</h3>
@@ -86,9 +87,9 @@
           </div>
 
           <!-- Secundario -->
-          <div class="nivel-slide">
+          <div class="nivel-slide" role="group" aria-roledescription="diapositiva" aria-label="Nivel secundario" aria-hidden="true">
 
-              <img src="{% static 'core/IMG/secundaria.jpg' %}" alt="Nivel Secundario">
+              <img src="{% static 'core/IMG/secundaria.jpg' %}" alt="Nivel Secundario" width="1188" height="668" loading="lazy" decoding="async">
 
               <div class="nivel-content">
                   <h3>Nivel Secundario</h3>
@@ -117,18 +118,18 @@
 
           </div>
 
-          <button class="nivel-arrow nivel-prev" onclick="changeNivel(-1)">
+          <button type="button" class="nivel-arrow nivel-prev" aria-label="Nivel anterior" onclick="changeNivel(-1)">
               &#10094;
           </button>
 
-          <button class="nivel-arrow nivel-next" onclick="changeNivel(1)">
+          <button type="button" class="nivel-arrow nivel-next" aria-label="Nivel siguiente" onclick="changeNivel(1)">
               &#10095;
           </button>
 
-          <div class="slider-dots">
-              <span class="nivel-dot active" onclick="setNivel(0)"></span>
-              <span class="nivel-dot" onclick="setNivel(1)"></span>
-              <span class="nivel-dot" onclick="setNivel(2)"></span>
+          <div class="slider-dots" role="group" aria-label="Elegir nivel educativo">
+              <button type="button" class="nivel-dot active" aria-label="Mostrar nivel inicial" aria-current="true" onclick="setNivel(0)"></button>
+              <button type="button" class="nivel-dot" aria-label="Mostrar nivel primario" aria-current="false" onclick="setNivel(1)"></button>
+              <button type="button" class="nivel-dot" aria-label="Mostrar nivel secundario" aria-current="false" onclick="setNivel(2)"></button>
           </div>
 
       </div>
@@ -155,10 +156,12 @@
 
       nivelSlides.forEach((slide,i)=>{
           slide.classList.toggle("active", i === nivelIndex);
+          slide.setAttribute("aria-hidden", String(i !== nivelIndex));
       });
 
       nivelDots.forEach((dot,i)=>{
           dot.classList.toggle("active", i === nivelIndex);
+          dot.setAttribute("aria-current", String(i === nivelIndex));
       });
   }
 

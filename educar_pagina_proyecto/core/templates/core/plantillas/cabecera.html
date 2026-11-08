@@ -7,14 +7,14 @@
 
 <header>
   <a href="{% url 'index' %}" class="brand">
-    <img src="{% static 'core/IMG/logo.png' %}" alt="Logo Educar para Transformar">
+    <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
     <div>
       <div class="brand-title">Educar para Transformar</div>
       <div class="brand-subtitle">Centro Educativo</div>
     </div>
   </a>
 
-  <nav>
+  <nav aria-label="Navegación principal">
     <a href="{% url 'niveles' %}">Niveles educativos</a>
     <a href="{% url 'bienestar' %}">Bienestar estudiantil</a>
     <a href="{% url 'noticias' %}">Noticias</a>

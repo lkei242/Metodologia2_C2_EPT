@@ -7,12 +7,13 @@
     <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
 </head>
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
 
 <div class="page">
 
     {% include 'core/plantillas/cabecera.html' %}
 
-    <main>
+    <main id="contenido-principal" tabindex="-1">
 
         <section class="trabajo-section">
 
