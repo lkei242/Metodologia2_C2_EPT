@@ -231,14 +231,56 @@ def recuperar_contrasena_confirmar(request):
     return Response({'ok': True, 'mensaje': 'Contraseña actualizada. Ya podés iniciar sesión.'})
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PATCH'])
 @authentication_classes([UsuarioJWTAuthentication])
 @permission_classes([EsAutenticado])
 def perfil(request):
-    """Devuelve los datos del usuario autenticado (identificado por el token)."""
+    """Devuelve o actualiza los datos de contacto del usuario autenticado."""
     usuario = request.user
     persona = Persona.objects.filter(id_usuario=usuario).first()
     rol, dashboard_url = _rol_dashboard(persona)
+
+    if request.method == 'PATCH':
+        if not persona:
+            return Response(
+                {'error': 'No se encontró el registro de persona asociado al usuario.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        email = request.data.get('email')
+        telefono = request.data.get('telefono')
+        campos_a_actualizar = []
+
+        if email is not None:
+            email = str(email).strip()
+            if email and ('@' not in email or '.' not in email):
+                return Response(
+                    {'error': 'El correo electrónico no tiene un formato válido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            persona.email = email
+            campos_a_actualizar.append('email')
+            if usuario.correo != email:
+                usuario.correo = email
+                usuario.save(update_fields=['correo'])
+
+        if telefono is not None:
+            telefono = str(telefono).strip()
+            persona.telefono = telefono
+            campos_a_actualizar.append('telefono')
+
+        if campos_a_actualizar:
+            persona.save(update_fields=campos_a_actualizar)
+
+        return Response({
+            'ok': True,
+            'mensaje': 'Perfil actualizado correctamente.',
+            'usuario': usuario.nombre_usuario,
+            'correo': usuario.correo,
+            'rol': rol,
+            'dashboard_url': dashboard_url,
+            'persona': _datos_persona(persona),
+        })
 
     return Response({
         'usuario': usuario.nombre_usuario,

@@ -66,7 +66,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
 <script>
   function showPanel(id, el) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+    document.querySelectorAll('.sidebar-nav a, .sidebar-nav button').forEach(a => a.classList.remove('active'));
     document.getElementById('panel-' + id).classList.add('active');
     el.classList.add('active');
   }
@@ -78,13 +78,13 @@ document.querySelectorAll('.nota-input').forEach(input => {
 
       if (cursoSeleccionado) {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+        document.querySelectorAll('.sidebar-nav a, .sidebar-nav button').forEach(a => a.classList.remove('active'));
         document.getElementById('panel-asistencia-curso').classList.add('active');
         document.getElementById('menu-asistencias').classList.add('active');
 
       } else if (panelParam === 'justificaciones') {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+        document.querySelectorAll('.sidebar-nav a, .sidebar-nav button').forEach(a => a.classList.remove('active'));
         document.getElementById('panel-justificaciones').classList.add('active');
         document.querySelector('[onclick*="justificaciones"]').classList.add('active');
       }
@@ -111,11 +111,12 @@ document.querySelectorAll('.nota-input').forEach(input => {
     }
   </script>
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
   <div class="page">
 
     <header>
       <a href="{% url 'index' %}" class="brand">
-        <img src="{% static 'core/IMG/logo.png' %}" alt="Logo">
+        <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
         <div>
           <div class="brand-title">Educar para Transformar</div>
           <div class="brand-subtitle">Portal del Preceptor</div>
@@ -125,7 +126,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
       <nav></nav>
 
       <div class="login">
-        <a href="#" onclick="abrirModalCerrarSesion()" class="btn-logout">Cerrar sesión</a>
+        <button type="button" onclick="abrirModalCerrarSesion()" class="btn-logout">Cerrar sesión</button>
       </div>
     </header>
 
@@ -144,47 +145,45 @@ document.querySelectorAll('.nota-input').forEach(input => {
           </span>
         </div>
 
-        <nav class="sidebar-nav">
-          <a href="#" class="active" onclick="showPanel('inicio', this); return false;">
+        <nav class="sidebar-nav" aria-label="Navegación del panel">
+          <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
             <span class="nav-icon">🏠</span> Inicio
-          </a>
-          <a href="#" onclick="showPanel('notificaciones', this); return false;">
+          </button>
+          <button type="button" onclick="showPanel('notificaciones', this)" aria-controls="panel-notificaciones" aria-pressed="false">
             <span class="nav-icon">🔔</span> Notificaciones
-          </a>
-          <a href="#" onclick="showPanel('cursos', this); return false;">
+          </button>
+          <button type="button" onclick="showPanel('cursos', this)" aria-controls="panel-cursos" aria-pressed="false">
             <span class="nav-icon">📚</span> Cursos
-          </a>
-          <a id="menu-asistencias"
-            href="#"
-            onclick="showPanel('asistencias', this); return false;">
+          </button>
+          <button type="button" id="menu-asistencias" onclick="showPanel('asistencias', this)" aria-controls="panel-asistencias" aria-pressed="false">
             <span class="nav-icon">✅</span> Asistencias
-          </a>
-          <a href="#" onclick="showPanel('justificaciones', this); return false;">
+          </button>
+          <button type="button" onclick="showPanel('justificaciones', this)" aria-controls="panel-justificaciones" aria-pressed="false">
             <span class="nav-icon">📝</span> Justificaciones
-          </a>
-          <a href="#" onclick="showPanel('comunicados', this); return false;">
+          </button>
+          <button type="button" onclick="showPanel('comunicados', this)" aria-controls="panel-comunicados" aria-pressed="false">
             <span class="nav-icon">📢</span> Comunicados
-          </a>
-          <a href="#" onclick="showPanel('perfil', this); return false;">
+          </button>
+          <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
             <span class="nav-icon">👤</span> Mi perfil
-          </a>
+          </button>
         </nav>
       </aside>
 
-      <main class="dashboard-main">
+      <main id="contenido-principal" class="dashboard-main" tabindex="-1">
         {% if request.GET.panel == 'justificaciones' and request.GET.guardado == '1' %}
         <div id="toast-guardado" style="
-          position:fixed; bottom:28px; right:28px;
+          position:fixed; bottom:35px; right:35px;
           background:#16a34a; color:#fff;
-          padding:12px 20px; border-radius:10px;
-          font-size:14px; font-weight:600;
-          box-shadow:0 4px 16px rgba(0,0,0,.15);
-          z-index:9999; display:flex; align-items:center; gap:8px;
+          padding:15px 25px; border-radius:12.5px;
+          font-size:17.5px; font-weight:600;
+          box-shadow:0 5px 20px rgba(0,0,0,.15);
+          z-index:9999; display:flex; align-items:center; gap:10px;
           animation: fadeInUp .3s ease;
         ">✅ Observación guardada correctamente</div>
         <style>
           @keyframes fadeInUp {
-            from { opacity:0; transform:translateY(12px); }
+            from { opacity:0; transform:translateY(15px); }
             to   { opacity:1; transform:translateY(0); }
           }
         </style>
@@ -254,7 +253,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
             </div>
           </div>
         
-          <p class="section-title" style="font-size:18px">Avisos del día</p>
+          <p class="section-title" style="font-size:22.5px">Avisos del día</p>
           {% for noticia in noticias %}
           <div class="notif-item">
             <div class="notif-icon" style="background:#dbeafe">📰</div>
@@ -337,7 +336,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
               <tr id="curso-{{ curso.id_curso }}" class="curso-detalle" style="display:none;">
                 <td colspan="6">
 
-                  <table class="tabla" style="width:100%; margin:10px 0;">
+                  <table class="tabla" style="width:100%; margin:12.5px 0;">
                     <thead>
                       <tr>
                         <th>Alumno</th>
@@ -561,7 +560,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
                 <button
                     type="button"
                     class="btn-small"
-                    style="margin-top:10px; background:#f1f5f9; color:#475569; border:1.5px solid #e2e8f0;"
+                    style="margin-top:12.5px; background:#f1f5f9; color:#475569; border:1.875px solid #e2e8f0;"
                     onclick="
                       var panel = this.nextElementSibling;
                       var visible = panel.style.display !== 'none';
@@ -570,15 +569,15 @@ document.querySelectorAll('.nota-input').forEach(input => {
                     "
                 >📝 Agregar observación</button>
 
-                <div style="display:none; margin-top:10px;">
+                <div style="display:none; margin-top:12.5px;">
                   <label style="
                     display:block;
-                    font-size:12px;
+                    font-size:15px;
                     font-weight:600;
                     color:#64748b;
                     text-transform:uppercase;
                     letter-spacing:.05em;
-                    margin-bottom:6px;
+                    margin-bottom:7.5px;
                   ">📝 Observación del preceptor</label>
 
                   <textarea
@@ -588,10 +587,10 @@ document.querySelectorAll('.nota-input').forEach(input => {
                       style="
                         width:100%;
                         box-sizing:border-box;
-                        padding:10px 12px;
-                        border:1.5px solid #e2e8f0;
-                        border-radius:8px;
-                        font-size:14px;
+                        padding:12.5px 15px;
+                        border:1.875px solid #e2e8f0;
+                        border-radius:10px;
+                        font-size:17.5px;
                         color:#334155;
                         background:#f8fafc;
                         resize:vertical;
@@ -600,14 +599,14 @@ document.querySelectorAll('.nota-input').forEach(input => {
                         font-family:inherit;
                         line-height:1.5;
                       "
-                      onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,.12)'; this.style.background='#fff';"
+                      onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3.75px rgba(99,102,241,.12)'; this.style.background='#fff';"
                       onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'; this.style.background='#f8fafc';"
                   >{{ asistencia.observacion|default:'' }}</textarea>
 
                   <button
                       type="submit"
                       class="btn-small"
-                      style="margin-top:10px;"
+                      style="margin-top:12.5px;"
                   >Guardar observación</button>
                 </div>
               </form>
@@ -629,7 +628,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
             Comunicados para cursos
           </p>
 
-          <div class="form-section" style="margin-top:20px">
+          <div class="form-section" style="margin-top:25px">
 
             <form method="POST" action="{% url 'crear-comunicado' %}" class="form-card">
               {% csrf_token %}
@@ -729,5 +728,17 @@ document.querySelectorAll('.nota-input').forEach(input => {
     </div>
   </div>
 
+<script>
+    const syncPanelButtonStates = () => {
+      document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+      });
+    };
+    syncPanelButtonStates();
+    document.addEventListener('DOMContentLoaded', syncPanelButtonStates);
+    document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+      button.addEventListener('click', syncPanelButtonStates);
+    });
+  </script>
 </body>
 </html>

@@ -52,10 +52,11 @@
   </script>
 
   <body class="dashboard-administrativo">
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
     <div class="page">
       <header>
         <a href="{% url 'index' %}" class="brand">
-          <img src="{% static 'core/IMG/logo.png' %}" alt="Logo" />
+          <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
           <div>
             <div class="brand-title">Educar para Transformar</div>
             <div class="brand-subtitle">Portal Administrativo</div>
@@ -64,9 +65,7 @@
         <nav></nav>
         <div class="login">
           <a href="{% url 'gestion-inicio' %}" class="btn-gestion">Gestión de alumnos, docentes y cursos</a>
-          <a href="#" onclick="abrirModalCerrarSesion()" class="btn-logout"
-            >Cerrar sesión</a
-          >
+          <button type="button" onclick="abrirModalCerrarSesion()" class="btn-logout">Cerrar sesión</button>
         </div>
       </header>
 
@@ -80,93 +79,38 @@
             <span>Área administrativa</span>
           </div>
 
-          <nav class="sidebar-nav">
-            <a
-              href="#"
-              class="active"
-              onclick="
-                showPanel('inicio', this);
-                return false;
-              "
-            >
+          <nav class="sidebar-nav" aria-label="Navegación del panel">
+            <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
               <span class="nav-icon">🏠</span> Inicio
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('inscripciones', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('inscripciones', this)" aria-controls="panel-inscripciones" aria-pressed="false">
               <span class="nav-icon">📝</span> Inscripciones
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('pagos', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('pagos', this)" aria-controls="panel-pagos" aria-pressed="false">
               <span class="nav-icon">💸</span> Pagos
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('documentacion', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('documentacion', this)" aria-controls="panel-documentacion" aria-pressed="false">
               <span class="nav-icon">📄</span> Documentación
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('reservas', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('reservas', this)" aria-controls="panel-reservas" aria-pressed="false">
               <span class="nav-icon">🏨</span> Reservas
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('opiniones', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('opiniones', this)" aria-controls="panel-opiniones" aria-pressed="false">
               <span class="nav-icon">💬</span> Opiniones
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('noticias', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('noticias', this)" aria-controls="panel-noticias" aria-pressed="false">
               <span class="nav-icon">📰</span> Noticias
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('usuarios', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('usuarios', this)" aria-controls="panel-usuarios" aria-pressed="false">
               <span class="nav-icon">🔼</span> Gestión de usuarios
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('perfil', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
               <span class="nav-icon">👤</span> Mi perfil
-            </a>
+            </button>
           </nav>
         </aside>
 
-        <main class="dashboard-main">
+        <main id="contenido-principal" class="dashboard-main" tabindex="-1">
           <div id="panel-inicio" class="panel active">
             <p class="section-title">Hola de nuevo, {{ persona.nombre }}</p>
 
@@ -235,7 +179,7 @@
                     <form
                         method="POST"
                         action="{% url 'aprobar-inscripcion' solicitud.id_solicitud %}"
-                        style="margin-top:5px;"
+                        style="margin-top:6.25px;"
                     >
                         {% csrf_token %}
                         <button type="submit" class="btn-aprobar">
@@ -246,7 +190,7 @@
                     <form
                         method="POST"
                         action="{% url 'rechazar-inscripcion' solicitud.id_solicitud %}"
-                        style="margin-top:5px;"
+                        style="margin-top:6.25px;"
                     >
                         {% csrf_token %}
                         <button type="submit" class="btn-rechazar">
@@ -420,7 +364,7 @@
                           id="rechazo-{{ doc.id_documentacion }}"
                           method="POST"
                           action="{% url 'rechazar_documentacion' doc.id_documentacion %}"
-                          style="display:none; margin-top:10px;">
+                          style="display:none; margin-top:12.5px;">
 
                           {% csrf_token %}
 
@@ -490,7 +434,7 @@
               </tbody>
             </table>
 
-            <div class="form-section" style="margin-top: 30px">
+            <div class="form-section" style="margin-top: 37.5px">
               {% if messages %}
                   {% for message in messages %}
                       {% if 'reservas' in message.tags %}
@@ -568,7 +512,7 @@
               <form
                 method="POST"
                 action="{% url 'eliminar-opinion' forloop.counter0 %}"
-                style="margin-top: 10px"
+                style="margin-top: 12.5px"
               >
                 {% csrf_token %}
 
@@ -633,7 +577,7 @@
               </form>
             </div>
 
-            <div style="margin-top: 40px"></div>
+            <div style="margin-top: 50px"></div>
           </div>
           <div id="panel-noticias" class="panel">
             <p class="section-title">Publicar noticia institucional</p>
@@ -738,7 +682,7 @@
           .querySelectorAll(".panel")
           .forEach((p) => p.classList.remove("active"));
         document
-          .querySelectorAll(".sidebar-nav a")
+          .querySelectorAll(".sidebar-nav a, .sidebar-nav button")
           .forEach((a) => a.classList.remove("active"));
         document.getElementById("panel-" + id).classList.add("active");
         el.classList.add("active");
@@ -753,7 +697,7 @@
           if (panel === "inicio") return;
 
           const enlace = document.querySelector(
-              `.sidebar-nav a[onclick*="showPanel('${panel}'"]`
+              `.sidebar-nav button[onclick*="showPanel('${panel}'"]`
           );
 
           if (enlace) {
@@ -830,13 +774,13 @@
           .forEach((p) => p.classList.remove("active"));
 
         document
-          .querySelectorAll(".sidebar-nav a")
+          .querySelectorAll(".sidebar-nav a, .sidebar-nav button")
           .forEach((a) => a.classList.remove("active"));
 
         document.getElementById("panel-" + id)?.classList.add("active");
 
         const link = document.querySelector(
-          `.sidebar-nav a[onclick*="'${id}'"]`,
+          `.sidebar-nav button[onclick*="'${id}'"]`,
         );
 
         if (link) {
@@ -860,5 +804,17 @@
           }
       }
     </script>
-  </body>
+  <script>
+    const syncPanelButtonStates = () => {
+      document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+      });
+    };
+    syncPanelButtonStates();
+    document.addEventListener('DOMContentLoaded', syncPanelButtonStates);
+    document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+      button.addEventListener('click', syncPanelButtonStates);
+    });
+  </script>
+</body>
 </html>

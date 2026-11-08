@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="{% static 'core/css/gestion.css' %}">
 </head>
 <body>
-  <main class="wrap narrow">
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
+  <main id="contenido-principal" class="wrap narrow" tabindex="-1">
     <nav><a href="{% url 'gestion-inicio' %}">Gestión</a> / {{ titulo }}</nav>
     <h1>{{ titulo }}</h1>
     {% if descripcion %}<p class="intro">{{ descripcion }}</p>{% endif %}

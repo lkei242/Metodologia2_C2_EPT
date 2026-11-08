@@ -9,14 +9,15 @@
 </head>
 
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
   
   <div class="page">
     {% include 'core/plantillas/cabecera.html' %}
 
-    <main>
+    <main id="contenido-principal" tabindex="-1">
       <section class="hero">
         <div class="hero-logo-box">
-          <img src="{% static 'core/IMG/logo.png' %}" alt="Logo Educar para Transformar">
+          <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
         </div>
         <h1>Educar para transformar</h1>
         <p>
@@ -29,7 +30,7 @@
         <div class="card">
           <div class="card-content">
             <div class="card-title">
-              <div class="icon icon-blue">◫</div>
+              <div class="icon icon-blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 7v14"/><path d="M3 18.5V5.75A1.75 1.75 0 0 1 4.75 4H9a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4.25A1.75 1.75 0 0 1 21 5.75V18.5"/><path d="M3 18.5A1.5 1.5 0 0 0 4.5 20H12"/><path d="M21 18.5A1.5 1.5 0 0 1 19.5 20H12"/></svg></div>
               <span>Niveles educativos</span>
             </div>
             <p>Propuesta académica para nivel inicial, primario y secundario con una formación integral.</p>
@@ -40,7 +41,7 @@
                 <strong>Formación académica</strong>
                 <span>Trayectorias educativas pensadas para acompañar cada etapa.</span>
               </div>
-              <div class="big-icon">◫</div>
+              <div class="big-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 7v14"/><path d="M3 18.5V5.75A1.75 1.75 0 0 1 4.75 4H9a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4.25A1.75 1.75 0 0 1 21 5.75V18.5"/><path d="M3 18.5A1.5 1.5 0 0 0 4.5 20H12"/><path d="M21 18.5A1.5 1.5 0 0 1 19.5 20H12"/></svg></div>
             </div>
           </div>
         </div>
@@ -48,7 +49,7 @@
         <div class="card">
           <div class="card-content">
             <div class="card-title">
-              <div class="icon icon-green">♡</div>
+              <div class="icon icon-green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg></div>
               <span>Bienestar estudiantil</span>
             </div>
             <p>Espacios de apoyo, orientación y cuidado para fortalecer el desarrollo integral del alumno.</p>
@@ -59,7 +60,7 @@
                 <strong>Acompañamiento integral</strong>
                 <span>Servicios que priorizan la salud, la inclusión y el bienestar.</span>
               </div>
-              <div class="big-icon">♡</div>
+              <div class="big-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg></div>
             </div>
           </div>
         </div>
@@ -67,7 +68,7 @@
         <div class="card">
           <div class="card-content">
             <div class="card-title">
-              <div class="icon icon-pink">✎</div>
+              <div class="icon icon-pink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 9h6M9 13h2M15 13h.01M9 17h1"/><path d="m14 16 1.5 1.5L19 14"/></svg></div>
               <span>Inscripción a cursado</span>
             </div>
             <p>Acceso ágil a formularios, solicitudes e información de inscripción para nuevos estudiantes.</p>
@@ -78,7 +79,7 @@
                 <strong>Gestión simple</strong>
                 <span>Procesos digitales para facilitar consultas y registros.</span>
               </div>
-              <div class="big-icon">✎</div>
+              <div class="big-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 9h6M9 13h2M15 13h.01M9 17h1"/><path d="m14 16 1.5 1.5L19 14"/></svg></div>
             </div>
           </div>
         </div>
@@ -88,33 +89,35 @@
       <h2>Nuestra Institución</h2>
       <p class="gallery-subtitle">Explorá nuestras instalaciones y los espacios donde transcurre la vida escolar.</p>
       
-      <div class="slider-container">
+      <div id="galeria-institucional" class="slider-container" role="region" aria-label="Galería de la institución" aria-live="off">
 
-        <div class="slide active">
-          <img src="{% static 'core/IMG/escuela0.jpg' %}" alt="Campus Institucional">
+        <div class="slide active" role="group" aria-roledescription="diapositiva" aria-label="Imagen 1 de 5" aria-hidden="false">
+          <img src="{% static 'core/IMG/escuela0.jpg' %}" alt="Campus Institucional" width="2000" height="1500" loading="lazy" decoding="async">
         </div>
-        <div class="slide">
-          <img src="{% static 'core/IMG/escuela2.jpg' %}" alt="Aulas">
+        <div class="slide" role="group" aria-roledescription="diapositiva" aria-label="Imagen 2 de 5" aria-hidden="true">
+          <img src="{% static 'core/IMG/escuela2.jpg' %}" alt="Aulas" width="1125" height="844" loading="lazy" decoding="async">
         </div>
-        <div class="slide">
-          <img src="{% static 'core/IMG/deportes.jpg' %}" alt="Complejo Deportivo">
+        <div class="slide" role="group" aria-roledescription="diapositiva" aria-label="Imagen 3 de 5" aria-hidden="true">
+          <img src="{% static 'core/IMG/deportes.jpg' %}" alt="Complejo Deportivo" width="713" height="475" loading="lazy" decoding="async">
         </div>
-        <div class="slide">
-          <img src="{% static 'core/IMG/comedor.jpg' %}" alt="Comedor Escolar">
+        <div class="slide" role="group" aria-roledescription="diapositiva" aria-label="Imagen 4 de 5" aria-hidden="true">
+          <img src="{% static 'core/IMG/comedor.jpg' %}" alt="Comedor Escolar" width="640" height="360" loading="lazy" decoding="async">
         </div>
-        <div class="slide">
-          <img src="{% static 'core/IMG/escuela1.jpg' %}" alt="Acto Escolar">
+        <div class="slide" role="group" aria-roledescription="diapositiva" aria-label="Imagen 5 de 5" aria-hidden="true">
+          <img src="{% static 'core/IMG/escuela1.jpg' %}" alt="Acto Escolar" width="1600" height="1200" loading="lazy" decoding="async">
         </div>
         
-        <button class="slider-arrow prev-arrow" onclick="changeSlide(-1)">&#10094;</button>
-        <button class="slider-arrow next-arrow" onclick="changeSlide(1)">&#10095;</button>
+        <button type="button" class="slider-arrow prev-arrow" aria-label="Imagen anterior" aria-controls="galeria-institucional" onclick="changeSlide(-1)">&#10094;</button>
+        <button type="button" class="slider-arrow next-arrow" aria-label="Imagen siguiente" aria-controls="galeria-institucional" onclick="changeSlide(1)">&#10095;</button>
         
-        <div class="slider-dots">
-          <span class="dot active" onclick="setSlide(0)"></span>
-          <span class="dot" onclick="setSlide(1)"></span>
-          <span class="dot" onclick="setSlide(2)"></span>
-          <span class="dot" onclick="setSlide(3)"></span>
+        <div class="slider-dots" role="group" aria-label="Elegir imagen de la galería">
+          <button type="button" class="dot active" aria-label="Mostrar imagen 1" aria-current="true" onclick="setSlide(0)"></button>
+          <button type="button" class="dot" aria-label="Mostrar imagen 2" aria-current="false" onclick="setSlide(1)"></button>
+          <button type="button" class="dot" aria-label="Mostrar imagen 3" aria-current="false" onclick="setSlide(2)"></button>
+          <button type="button" class="dot" aria-label="Mostrar imagen 4" aria-current="false" onclick="setSlide(3)"></button>
+          <button type="button" class="dot" aria-label="Mostrar imagen 5" aria-current="false" onclick="setSlide(4)"></button>
         </div>
+        <button type="button" class="slider-toggle" aria-controls="galeria-institucional" aria-label="Pausar presentación automática" aria-pressed="false" onclick="toggleSlideShow()">Pausar</button>
       </div>
     </section>
 
@@ -141,31 +144,23 @@
     let currentSlideIndex = 0;
     const slides = document.querySelectorAll('.slide');
     const dots = document.querySelectorAll('.dot');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let slideshowPaused = reduceMotion;
     let autoSlideInterval;
+
     function showSlide(index) {
-
-      if (index >= slides.length) {
-        currentSlideIndex = 0;
-      } else if (index < 0) {
-        currentSlideIndex = slides.length - 1;
-      } else {
-        currentSlideIndex = index;
-      }
-
+      if (!slides.length) return;
+      currentSlideIndex = (index + slides.length) % slides.length;
       slides.forEach((slide, i) => {
-        if (i === currentSlideIndex) {
-          slide.classList.add('active');
-        } else {
-          slide.classList.remove('active');
-        }
+        const active = i === currentSlideIndex;
+        slide.classList.toggle('active', active);
+        slide.setAttribute('aria-hidden', String(!active));
+        slide.setAttribute('aria-label', 'Imagen ' + (i + 1) + ' de ' + slides.length);
       });
-
       dots.forEach((dot, i) => {
-        if (i === currentSlideIndex) {
-          dot.classList.add('active');
-        } else {
-          dot.classList.remove('active');
-        }
+        const active = i === currentSlideIndex;
+        dot.classList.toggle('active', active);
+        dot.setAttribute('aria-current', String(active));
       });
     }
 
@@ -179,17 +174,32 @@
       resetAutoSlide();
     }
 
-    function startAutoSlide() {
-      autoSlideInterval = setInterval(() => {
-        showSlide(currentSlideIndex + 1);
-      }, 4000); // Cambia de foto cada 4 segundos
+    function renderSlideToggle() {
+      const toggle = document.querySelector('.slider-toggle');
+      if (!toggle) return;
+      toggle.textContent = slideshowPaused ? 'Reanudar' : 'Pausar';
+      toggle.setAttribute('aria-label', slideshowPaused ? 'Reanudar presentación automática' : 'Pausar presentación automática');
+      toggle.setAttribute('aria-pressed', String(slideshowPaused));
     }
-    // Reiniciar el temporizador al interactuar manualmente
-    function resetAutoSlide() {
+
+    function startAutoSlide() {
       clearInterval(autoSlideInterval);
+      if (slideshowPaused) return;
+      autoSlideInterval = setInterval(() => showSlide(currentSlideIndex + 1), 5000);
+    }
+
+    function resetAutoSlide() {
       startAutoSlide();
     }
-    // Arrancar
+
+    function toggleSlideShow() {
+      slideshowPaused = !slideshowPaused;
+      renderSlideToggle();
+      startAutoSlide();
+    }
+
+    showSlide(0);
+    renderSlideToggle();
     startAutoSlide();
   </script>
 </body>

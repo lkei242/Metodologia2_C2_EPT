@@ -1,9 +1,19 @@
-"""Rutas de servicios (deportes, transporte, comedor).
+"""Rutas de la API para Servicios (RF-M16, RF-M17).
 
-Este archivo es de Germán (tareas G4 y G10). Luka solo lo incluye en api/urls.py.
+Gestionadas por Germán.
 """
 from django.urls import path
 
+from . import views_servicios
+
 urlpatterns = [
-    # Germán agrega aquí sus rutas: servicios/deportes/..., servicios/transporte/..., etc.
+    path('alumnos/', views_servicios.listar_alumnos, name='api-servicios-alumnos'),
+    path('mis-servicios/', views_servicios.mis_servicios, name='api-servicios-mis-servicios'),
+    path('deportes/grupos/', views_servicios.listar_grupos_deportivos, name='api-servicios-deportes-grupos'),
+    path('deportes/inscripciones/', views_servicios.inscribir_deporte, name='api-servicios-deportes-inscribir'),
+    path('deportes/inscripciones/<int:inscripcion_id>/', views_servicios.desinscribir_deporte, name='api-servicios-deportes-desinscribir'),
+    path('transporte/recorridos/', views_servicios.listar_recorridos_transporte, name='api-servicios-transporte-recorridos'),
+    path('transporte/inscripcion/', views_servicios.actualizar_transporte, name='api-servicios-transporte-inscripcion'),
+    path('comedor/', views_servicios.actualizar_comedor, name='api-servicios-comedor'),
+    path('offline-bundle/', views_servicios.paquete_offline, name='api-servicios-offline-bundle'),
 ]

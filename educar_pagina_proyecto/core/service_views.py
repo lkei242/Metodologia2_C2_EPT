@@ -8,7 +8,7 @@ from .business_forms import GrupoDeportivoForm, InscripcionDeportivaForm, Recorr
 from .domain_services import ReglaNegocioError, asignar_transporte, inscribir_en_deporte
 from .domain_services import publicar_cambio, finalizar_deporte
 from .management_views import _autorizar_gestion
-from .models import (Alumno, GrupoDeportivo, InscripcionDeportiva,
+from .models import (Alumno, Arancel, GrupoDeportivo, InscripcionDeportiva,
                      InscripcionTransporte, RecorridoTransporte,
                      Tutor, TutorTutoraAlumno)
 from .views import obtener_datos_sesion
@@ -114,4 +114,47 @@ def familia_servicios(request):
         "hijos": alumnos.select_related("id_persona", "id_curso").prefetch_related("inscripciones_deportivas__grupo__disciplina", "inscripciones_transporte__recorrido"),
         "grupos": GrupoDeportivo.objects.select_related("disciplina", "profesor_responsable__id_persona").all(),
         "recorridos": RecorridoTransporte.objects.filter(activo=True),
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def gestion_valores(request):
+    """Pantalla administrativa para fijar los importes de cuotas y servicios (G1 / RF-M15)."""
+    _, denied = _autorizar_gestion(request)
+    if denied:
+        return denied
+
+    niveles = ["Inicial", "Primario", "Secundario"]
+    for niv, monto_defecto in [("Inicial", 48000.00), ("Primario", 62000.00), ("Secundario", 75000.00)]:
+        Arancel.objects.get_or_create(nivel=niv, defaults={"monto": monto_defecto})
+
+    for concepto, monto_defecto in [("Comedor", 35000.00), ("Transporte", 28000.00)]:
+        Arancel.objects.get_or_create(nivel=concepto, defaults={"monto": monto_defecto})
+
+    if request.method == "POST":
+        modificados = []
+        for arancel in Arancel.objects.all():
+            nuevo_monto_raw = request.POST.get(f"monto_{arancel.id_arancel}")
+            if nuevo_monto_raw is not None:
+                try:
+                    nuevo_monto = float(nuevo_monto_raw)
+                    if nuevo_monto >= 0 and nuevo_monto != float(arancel.monto):
+                        arancel.monto = nuevo_monto
+                        arancel.save(update_fields=["monto"])
+                        modificados.append(arancel.nivel)
+                except ValueError:
+                    pass
+        if modificados:
+            publicar_cambio(request, "Arancel", "lote", "actualizar", modificados)
+            messages.success(request, f"Valores actualizados para: {', '.join(modificados)}.")
+        else:
+            messages.info(request, "No se registraron cambios en los importes.")
+        return redirect("gestion-valores")
+
+    aranceles_cuotas = Arancel.objects.filter(nivel__in=niveles).order_by("nivel")
+    aranceles_servicios = Arancel.objects.exclude(nivel__in=niveles).order_by("nivel")
+
+    return render(request, "core/gestion_valores.html", {
+        "aranceles_cuotas": aranceles_cuotas,
+        "aranceles_servicios": aranceles_servicios,
     })

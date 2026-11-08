@@ -1,0 +1,66 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carga de Valores y Aranceles</title>
+  <link rel="stylesheet" href="{% static 'core/css/gestion.css' %}">
+</head>
+<body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
+  <main id="contenido-principal" class="wrap" tabindex="-1">
+    <nav><a href="{% url 'gestion-inicio' %}">Gestión</a> / Valores y Aranceles</nav>
+    <h1>Carga de Valores Institucionales (RF-M15)</h1>
+    <p>Permite al personal administrativo definir y actualizar los aranceles de cuota por nivel y valores de servicios.</p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <p class="notice {{ message.tags }}">{{ message }}</p>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="grid">
+        <section>
+          <h2>Cuotas Mensuales por Nivel Educativo</h2>
+          <p>Valores base aplicados a la emisión y facturación mensual según nivel del curso.</p>
+          {% for a in aranceles_cuotas %}
+            <div class="field">
+              <label for="monto_{{ a.id_arancel }}">Nivel {{ a.nivel }}:</label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>$</span>
+                <input type="number" step="0.01" min="0" id="monto_{{ a.id_arancel }}" name="monto_{{ a.id_arancel }}" value="{{ a.monto }}" required>
+              </div>
+            </div>
+          {% endfor %}
+        </section>
+
+        <section>
+          <h2>Valores de Servicios Escolares</h2>
+          <p>Importes aplicados a los servicios complementarios (comedor y transporte).</p>
+          {% for a in aranceles_servicios %}
+            <div class="field">
+              <label for="monto_{{ a.id_arancel }}">{{ a.nivel }}:</label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>$</span>
+                <input type="number" step="0.01" min="0" id="monto_{{ a.id_arancel }}" name="monto_{{ a.id_arancel }}" value="{{ a.monto }}" required>
+              </div>
+            </div>
+          {% endfor %}
+        </section>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button type="submit" style="background: #1D66C2; color: #fff; padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;">
+          Guardar Nuevos Valores
+        </button>
+      </div>
+    </form>
+
+    <div style="margin-top: 30px;">
+      <a href="{% url 'gestion-inicio' %}">Volver a gestión</a>
+    </div>
+  </main>
+</body>
+</html>

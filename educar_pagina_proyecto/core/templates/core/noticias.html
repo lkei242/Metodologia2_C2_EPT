@@ -9,11 +9,12 @@
 </head>
 
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
 
   <div class="page">
     {% include 'core/plantillas/cabecera.html' %}
 
-    <main>
+    <main id="contenido-principal" tabindex="-1">
 
       <section class="hero">
         <h1>Noticias institucionales</h1>
@@ -34,7 +35,7 @@
             <img
                 src="/media/{{ noticia.imagen }}"
                 alt="Noticia institucional"
-                class="card-image">
+                class="card-image" width="800" height="450" loading="lazy" decoding="async">
         {% endif %}
 
         <div class="card-content">

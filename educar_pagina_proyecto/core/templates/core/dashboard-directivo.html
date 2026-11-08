@@ -51,10 +51,11 @@
 </script>
 
 <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
   <div class="page">
     <header>
       <a href="{% url 'index' %}" class="brand">
-        <img src="{% static 'core/IMG/logo.png' %}" alt="Logo">
+        <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
         <div>
           <div class="brand-title">Educar para Transformar</div>
           <div class="brand-subtitle">Portal Directivo</div>
@@ -62,7 +63,7 @@
       </a>
       <nav></nav>
       <div class="login">
-        <a href="#" onclick="abrirModalCerrarSesion()" class="btn-logout">Cerrar sesión</a>
+        <button type="button" onclick="abrirModalCerrarSesion()" class="btn-logout">Cerrar sesión</button>
       </div>
     </header>
 
@@ -78,37 +79,37 @@
           <span>Equipo Directivo</span>
         </div>
 
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav" aria-label="Navegación del panel">
 
-          <a href="#" class="active" onclick="showPanel('inicio', this); return false;">
+          <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
             <span class="nav-icon">🏠</span> Inicio
-          </a>
+          </button>
 
-          <a href="#" onclick="showPanel('institucion', this); return false;">
+          <button type="button" onclick="showPanel('institucion', this)" aria-controls="panel-institucion" aria-pressed="false">
             <span class="nav-icon">🏫</span> Institución
-          </a>
+          </button>
 
-          <a href="#" onclick="showPanel('docentes', this); return false;">
+          <button type="button" onclick="showPanel('docentes', this)" aria-controls="panel-docentes" aria-pressed="false">
             <span class="nav-icon">👩‍🏫</span> Docentes
-          </a>
+          </button>
 
-          <a href="#" onclick="showPanel('reportes', this); return false;">
+          <button type="button" onclick="showPanel('reportes', this)" aria-controls="panel-reportes" aria-pressed="false">
             <span class="nav-icon">📊</span> Reportes
-          </a>
+          </button>
 
-          <a href="#" onclick="showPanel('comunicados', this); return false;">
+          <button type="button" onclick="showPanel('comunicados', this)" aria-controls="panel-comunicados" aria-pressed="false">
             <span class="nav-icon">📢</span> Comunicados
-          </a>
+          </button>
 
-          <a href="#" onclick="showPanel('perfil', this); return false;">
+          <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
             <span class="nav-icon">👤</span> Mi perfil
-          </a>
+          </button>
 
         </nav>
 
       </aside>
 
-      <main class="dashboard-main">
+      <main id="contenido-principal" class="dashboard-main" tabindex="-1">
 
         <!-- INICIO -->
         <div id="panel-inicio" class="panel active">
@@ -412,7 +413,7 @@
             Comunicados institucionales
           </p>
 
-          <div class="form-section" style="margin-top:20px">
+          <div class="form-section" style="margin-top:25px">
 
             <form method="POST" action="{% url 'crear-comunicado' %}" class="form-card">
               {% csrf_token %}
@@ -514,11 +515,23 @@
   <script>
     function showPanel(id, el) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+      document.querySelectorAll('.sidebar-nav a, .sidebar-nav button').forEach(a => a.classList.remove('active'));
       document.getElementById('panel-' + id).classList.add('active');
       el.classList.add('active');
     }
   </script>
 
+<script>
+    const syncPanelButtonStates = () => {
+      document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+      });
+    };
+    syncPanelButtonStates();
+    document.addEventListener('DOMContentLoaded', syncPanelButtonStates);
+    document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+      button.addEventListener('click', syncPanelButtonStates);
+    });
+  </script>
 </body>
 </html>

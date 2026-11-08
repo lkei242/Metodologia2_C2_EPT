@@ -39,10 +39,11 @@
   </script>
 
   <body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
     <div class="page">
       <header>
         <a href="{% url 'index' %}" class="brand">
-          <img src="{% static 'core/IMG/logo.png' %}" alt="Logo" />
+          <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
 
           <div>
             <div class="brand-title">Educar para Transformar</div>
@@ -53,9 +54,7 @@
         <nav></nav>
 
         <div class="login">
-          <a href="#" onclick="abrirModalCerrarSesion()" class="btn-logout"
-            >Cerrar sesión</a
-          >
+          <button type="button" onclick="abrirModalCerrarSesion()" class="btn-logout">Cerrar sesión</button>
         </div>
       </header>
 
@@ -74,111 +73,50 @@
             </span>
           </div>
 
-          <nav class="sidebar-nav">
+          <nav class="sidebar-nav" aria-label="Navegación del panel">
             <a href="{% url 'reportes' %}?reporte=R-01"><span class="nav-icon">📄</span> Consulta de mi/s hijo/s</a>
             <a href="{% url 'familia-servicios' %}"><span class="nav-icon">⚽</span> Deportes y transporte</a>
-            <a
-              href="#"
-              class="active"
-              onclick="
-                showPanel('inicio', this);
-                return false;
-              "
-            >
+            <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
               <span class="nav-icon">🏠</span> Inicio
-            </a>
+            </button>
 
-            <a
-              href="#"
-              onclick="
-                showPanel('hijos', this);
-                return false;
-              "
-            >
+            <button type="button" onclick="showPanel('hijos', this)" aria-controls="panel-hijos" aria-pressed="false">
               <span class="nav-icon">👨‍👩‍👧</span> Mi/s hijo/s
-            </a>
+            </button>
 
-            <a
-              href="#"
-              onclick="
-                showPanel('calificaciones', this);
-                return false;
-              "
-            >
+            <button type="button" onclick="showPanel('calificaciones', this)" aria-controls="panel-calificaciones" aria-pressed="false">
               <span class="nav-icon">📊</span> Calificaciones
-            </a>
+            </button>
 
-            <a
-              href="#"
-              onclick="
-                showPanel('asistencias', this);
-                return false;
-              "
-            >
+            <button type="button" onclick="showPanel('asistencias', this)" aria-controls="panel-asistencias" aria-pressed="false">
               <span class="nav-icon">✅</span> Asistencias
-            </a>
+            </button>
 
-            <a
-              href="#"
-              onclick="
-                showPanel('pagos', this);
-                return false;
-              "
-            >
+            <button type="button" onclick="showPanel('pagos', this)" aria-controls="panel-pagos" aria-pressed="false">
               <span class="nav-icon">💳</span> Pagos
-            </a>
+            </button>
 
-            <a
-              href="#"
-              onclick="
-                showPanel('cuotas', this);
-                return false;
-              "
-            >
+            <button type="button" onclick="showPanel('cuotas', this)" aria-controls="panel-cuotas" aria-pressed="false">
               <span class="nav-icon">💰</span> Historial de pagos
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('documentacion', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('documentacion', this)" aria-controls="panel-documentacion" aria-pressed="false">
               <span class="nav-icon">📄</span>
               Documentación
-            </a>
+            </button>
 
-            <a
-              href="#"
-              onclick="
-                showPanel('mensajes', this);
-                return false;
-              "
-            >
+            <button type="button" onclick="showPanel('mensajes', this)" aria-controls="panel-mensajes" aria-pressed="false">
               <span class="nav-icon">💬</span> Mensajes
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('contacto', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('contacto', this)" aria-controls="panel-contacto" aria-pressed="false">
               <span class="nav-icon">📞</span> Contacto
-            </a>
-            <a
-              href="#"
-              onclick="
-                showPanel('perfil', this);
-                return false;
-              "
-            >
+            </button>
+            <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
               <span class="nav-icon">👤</span> Mi perfil
-            </a>
+            </button>
           </nav>
         </aside>
 
-        <main class="dashboard-main">
+        <main id="contenido-principal" class="dashboard-main" tabindex="-1">
           <!-- INICIO -->
           <div id="panel-inicio" class="panel active">
             <p class="section-title">Hola de nuevo, {{ persona.nombre }}</p>
@@ -458,7 +396,7 @@
 
                       {% if hijo.documentacion %}
 
-                          <div class="tarea-card" style="margin-bottom:15px;">
+                          <div class="tarea-card" style="margin-bottom:18.75px;">
 
                               <strong>
                                   {{ hijo.persona.nombre }}
@@ -593,7 +531,7 @@
                   class="btn-form"
                   style="
                     margin-left: 0;
-                    margin-top: 10px;
+                    margin-top: 12.5px;
                     text-decoration: none;
                     display: inline-block;
                   "
@@ -622,15 +560,15 @@
             <br />
 
             <div class="stat-card">
-              <h3 style="margin-bottom: 20px">Formulario de consulta</h3>
+              <h3 style="margin-bottom: 25px">Formulario de consulta</h3>
               {% if messages %} {% for message in messages %}
               <div
                 style="
                   background: #dcfce7;
                   color: #166534;
-                  padding: 12px;
-                  border-radius: 8px;
-                  margin-bottom: 15px;
+                  padding: 15px;
+                  border-radius: 10px;
+                  margin-bottom: 18.75px;
                   font-weight: 600;
                 "
               >
@@ -717,7 +655,7 @@
           .forEach((p) => p.classList.remove("active"));
 
         document
-          .querySelectorAll(".sidebar-nav a")
+          .querySelectorAll(".sidebar-nav a, .sidebar-nav button")
           .forEach((a) => a.classList.remove("active"));
 
         document.getElementById("panel-" + id).classList.add("active");
@@ -735,14 +673,14 @@
           .forEach((p) => p.classList.remove("active"));
 
         document
-          .querySelectorAll(".sidebar-nav a")
+          .querySelectorAll(".sidebar-nav a, .sidebar-nav button")
           .forEach((a) => a.classList.remove("active"));
 
         document
           .getElementById("panel-" + panelActivo)
           ?.classList.add("active");
 
-        document.querySelectorAll(".sidebar-nav a").forEach((link) => {
+        document.querySelectorAll(".sidebar-nav a, .sidebar-nav button").forEach((link) => {
           if (
             link.getAttribute("onclick") &&
             link.getAttribute("onclick").includes("'" + panelActivo + "'")
@@ -752,5 +690,17 @@
         });
       });
     </script>
-  </body>
+  <script>
+    const syncPanelButtonStates = () => {
+      document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+      });
+    };
+    syncPanelButtonStates();
+    document.addEventListener('DOMContentLoaded', syncPanelButtonStates);
+    document.querySelectorAll('.sidebar-nav button[aria-controls]').forEach((button) => {
+      button.addEventListener('click', syncPanelButtonStates);
+    });
+  </script>
+</body>
 </html>
