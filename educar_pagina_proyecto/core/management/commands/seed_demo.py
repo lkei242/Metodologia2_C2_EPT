@@ -1,6 +1,10 @@
 import datetime
+from decimal import Decimal
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
+
+from core.seguridad import guardar_contrasenia
 
 from core.models import (
     Alumno,
@@ -22,6 +26,7 @@ from core.models import (
     Tutor,
     TutorTutoraAlumno,
     Usuario,
+    ValorComedor,
 )
 
 
@@ -69,6 +74,13 @@ class Command(BaseCommand):
                     defaults={"descripcion": desc, "activo": True},
                 )
                 recorridos_creados[nombre] = rec
+            # Valores de demostración (RF-M15); si ya tienen valor, no se pisan.
+            for rec in recorridos_creados.values():
+                if rec.valor is None:
+                    rec.valor = Decimal("15000.00")
+                    rec.save(update_fields=["valor"])
+            if not ValorComedor.objects.exists():
+                ValorComedor.objects.create(monto=Decimal("12000.00"))
             self.stdout.write(self.style.SUCCESS("[OK] 4 Recorridos de transporte listos."))
 
             # 3. Instalaciones deportivas
@@ -89,6 +101,9 @@ class Command(BaseCommand):
                     nombre=disc_nom,
                     defaults={"horarios": "Tarde", "id_instalacion": inst},
                 )
+                if d.valor is None:
+                    d.valor = Decimal("8000.00")
+                    d.save(update_fields=["valor"])
                 disciplinas[disc_nom] = d
             self.stdout.write(self.style.SUCCESS("[OK] Disciplinas e instalaciones listas."))
 
@@ -96,7 +111,7 @@ class Command(BaseCommand):
             # 5.1 Personal Administrativo
             u_admin, _ = Usuario.objects.get_or_create(
                 nombre_usuario="admin_demo",
-                defaults={"correo": "admin@educar.edu.ar", "contrasenia": "admin123"},
+                defaults={"correo": "admin@educar.edu.ar", "contrasenia": guardar_contrasenia("admin123")},
             )
             p_admin, _ = Persona.objects.get_or_create(
                 dni="30111222",
@@ -122,7 +137,7 @@ class Command(BaseCommand):
             # 5.2 Directivo
             u_dir, _ = Usuario.objects.get_or_create(
                 nombre_usuario="directivo_demo",
-                defaults={"correo": "directivo@educar.edu.ar", "contrasenia": "dir123"},
+                defaults={"correo": "directivo@educar.edu.ar", "contrasenia": guardar_contrasenia("dir123")},
             )
             p_dir, _ = Persona.objects.get_or_create(
                 dni="22333444",
@@ -143,7 +158,7 @@ class Command(BaseCommand):
             # 5.3 Preceptor
             u_prec, _ = Usuario.objects.get_or_create(
                 nombre_usuario="preceptor_demo",
-                defaults={"correo": "preceptor@educar.edu.ar", "contrasenia": "prec123"},
+                defaults={"correo": "preceptor@educar.edu.ar", "contrasenia": guardar_contrasenia("prec123")},
             )
             p_prec, _ = Persona.objects.get_or_create(
                 dni="32444555",
@@ -168,7 +183,7 @@ class Command(BaseCommand):
             # 5.4 Docente (profesor de deportes y materias)
             u_doc, _ = Usuario.objects.get_or_create(
                 nombre_usuario="docente_demo",
-                defaults={"correo": "profesor@educar.edu.ar", "contrasenia": "doc123"},
+                defaults={"correo": "profesor@educar.edu.ar", "contrasenia": guardar_contrasenia("doc123")},
             )
             p_doc, _ = Persona.objects.get_or_create(
                 dni="28555666",
@@ -195,7 +210,7 @@ class Command(BaseCommand):
             # 5.5 Tutor
             u_tutor, _ = Usuario.objects.get_or_create(
                 nombre_usuario="tutor_demo",
-                defaults={"correo": "tutor@familia.com", "contrasenia": "tutor123"},
+                defaults={"correo": "tutor@familia.com", "contrasenia": guardar_contrasenia("tutor123")},
             )
             p_tutor, _ = Persona.objects.get_or_create(
                 dni="27666777",
@@ -244,7 +259,7 @@ class Command(BaseCommand):
             # 5.7 Dos Alumnos hijos del Tutor
             u_al1, _ = Usuario.objects.get_or_create(
                 nombre_usuario="alumno_demo1",
-                defaults={"correo": "alumno1@familia.com", "contrasenia": "alumno123"},
+                defaults={"correo": "alumno1@familia.com", "contrasenia": guardar_contrasenia("alumno123")},
             )
             p_al1, _ = Persona.objects.get_or_create(
                 dni="48111001",
@@ -274,7 +289,7 @@ class Command(BaseCommand):
 
             u_al2, _ = Usuario.objects.get_or_create(
                 nombre_usuario="alumno_demo2",
-                defaults={"correo": "alumno2@familia.com", "contrasenia": "alumno123"},
+                defaults={"correo": "alumno2@familia.com", "contrasenia": guardar_contrasenia("alumno123")},
             )
             p_al2, _ = Persona.objects.get_or_create(
                 dni="50222002",
