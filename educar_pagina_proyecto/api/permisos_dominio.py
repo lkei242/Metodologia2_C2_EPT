@@ -24,6 +24,9 @@ PADRE = 'padre'
 ALUMNO = 'alumno'
 
 
+ROLES_PERSONAL_ESCOLAR = (ADMINISTRATIVO, DIRECTIVO, DOCENTE, PRECEPTOR)
+
+
 def persona_de(usuario):
     return Persona.objects.filter(id_usuario=usuario).first()
 
@@ -68,7 +71,7 @@ def hijos_visibles(usuario):
 def alumnos_visibles(usuario):
     """Alumnos cuyos datos financieros puede consultar el usuario."""
     rol = rol_de(usuario)
-    if rol in (ADMINISTRATIVO, DIRECTIVO):
+    if rol in ROLES_PERSONAL_ESCOLAR:
         return Alumno.objects.all()
     if rol == PADRE:
         return hijos_visibles(usuario)

@@ -123,6 +123,24 @@ class ConsultasTests(BaseFinanzasTests):
         self.assertEqual(respuesta.status_code, 200)
         self.assertTrue(respuesta.content.startswith(b"%PDF"))
 
+    def test_busqueda_alumnos_con_filtros(self):
+        self.autenticar(self.admin_web())
+        resp = self.api.get("/api/alumnos/?q=50000001")
+        self.assertEqual(len(resp.json()), 1)
+        self.assertEqual(resp.json()[0]["dni"], "50000001")
+
+        resp_anio = self.api.get("/api/alumnos/?anio_nacimiento=2015")
+        self.assertEqual(len(resp_anio.json()), 2)
+
+        resp_fecha = self.api.get("/api/alumnos/?fecha_nacimiento=2015-01-01")
+        self.assertEqual(len(resp_fecha.json()), 2)
+
+        resp_nivel = self.api.get("/api/alumnos/?nivel=Primario")
+        self.assertEqual(len(resp_nivel.json()), 2)
+
+        resp_vacio = self.api.get("/api/alumnos/?nivel=Secundario")
+        self.assertEqual(len(resp_vacio.json()), 0)
+
 
 class PagoTests(BaseFinanzasTests):
     def pagar(self, clave, items):

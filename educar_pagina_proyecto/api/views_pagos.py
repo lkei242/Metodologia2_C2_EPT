@@ -8,7 +8,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import FileResponse, HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -17,7 +17,7 @@ from rest_framework.response import Response
 
 from api.permisos_dominio import PADRE, alumnos_visibles, exigir_alumno_visible, exigir_rol
 from core.facturacion import generar_pdf_factura
-from core.models import ComprobantePago, Cuota, Factura, ItemFactura, SolicitudPago
+from core.models import ComprobantePago, Cuota, Factura, ItemFactura, SolicitudPago, TutorTutoraAlumno
 
 EXTENSIONES_COMPROBANTE = {
     '.pdf': b'%PDF',
@@ -45,11 +45,40 @@ def _pagado(factura):
 
 
 def _alumno_dict(alumno):
+    persona = alumno.id_persona
+    curso = alumno.id_curso
+    rel_tutor = (
+        TutorTutoraAlumno.objects.filter(id_alumno=alumno)
+        .select_related('id_tutor__id_persona')
+        .first()
+    )
+    tutor_dict = None
+    if rel_tutor and rel_tutor.id_tutor:
+        tp = rel_tutor.id_tutor.id_persona
+        tutor_dict = {
+            'nombre': f"{tp.nombre} {tp.apellido}" if tp else "No asignado",
+            'parentesco': rel_tutor.tipo_parentesco or "Tutor",
+            'telefono': rel_tutor.id_tutor.telefono_contacto or (tp.telefono if tp else "") or "",
+            'email': rel_tutor.id_tutor.email_contacto or (tp.email if tp else "") or "",
+        }
     return {
         'legajo': alumno.legajo,
-        'nombre': alumno.id_persona.nombre,
-        'apellido': alumno.id_persona.apellido,
-        'nivel': alumno.id_curso.nivel if alumno.id_curso_id else None,
+        'nombre': persona.nombre,
+        'apellido': persona.apellido,
+        'dni': persona.dni or "",
+        'fecha_nacimiento': persona.fecha_nacimiento.isoformat() if persona.fecha_nacimiento else None,
+        'telefono': persona.telefono or "",
+        'email': persona.email or "",
+        'direccion': persona.direccion or "",
+        'estado': alumno.estado,
+        'fecha_ingreso': alumno.fecha_ingreso.isoformat() if alumno.fecha_ingreso else None,
+        'inscripto_comedor': bool(alumno.inscripto_comedor),
+        'curso': f"{curso.anio}° {curso.comision}" if curso else "Sin asignar",
+        'anio': curso.anio if curso else None,
+        'comision': curso.comision if curso else None,
+        'nivel': curso.nivel if curso else None,
+        'turno': curso.turno if curso else None,
+        'tutor': tutor_dict,
     }
 
 
@@ -166,9 +195,89 @@ def _validar_archivo(archivo):
 
 @api_view(['GET'])
 def alumnos(request):
-    """Alumnos que el usuario puede consultar (sus hijos, o él mismo)."""
-    lista = alumnos_visibles(request.user).select_related('id_persona', 'id_curso').order_by('id_persona__apellido')
-    return Response([_alumno_dict(a) for a in lista])
+    """Alumnos que el usuario puede consultar (personal escolar ve todos; tutor ve sus hijos; alumno se ve a sí mismo).
+
+    Admite filtros opcionales por query params:
+    - ?q= : búsqueda parcial por nombre, apellido, dni o legajo
+    - ?nivel= : Inicial, Primario, Secundario
+    - ?anio= : año del curso (ej: 1, 2, 3...)
+    - ?turno= : Mañana, Tarde, Vespertino
+    - ?estado= : Activo, Inactivo
+    - ?fecha_nacimiento= : AAAA-MM-DD
+    - ?anio_nacimiento= : AAAA (ej: 2012)
+    - ?nacimiento_desde= : AAAA-MM-DD
+    - ?nacimiento_hasta= : AAAA-MM-DD
+    - ?comedor= : 1 / true / 0 / false
+    """
+    qs = (
+        alumnos_visibles(request.user)
+        .select_related('id_persona', 'id_curso')
+        .prefetch_related('tutortutoraalumno_set__id_tutor__id_persona')
+        .order_by('id_persona__apellido', 'id_persona__nombre')
+    )
+
+    q = request.query_params.get('q', '').strip()
+    if q:
+        filtro_q = (
+            Q(id_persona__nombre__icontains=q)
+            | Q(id_persona__apellido__icontains=q)
+            | Q(id_persona__dni__icontains=q)
+        )
+        if q.isdigit():
+            filtro_q |= Q(legajo=int(q))
+        qs = qs.filter(filtro_q)
+
+    nivel = request.query_params.get('nivel', '').strip()
+    if nivel and nivel.lower() != 'todos':
+        qs = qs.filter(id_curso__nivel__iexact=nivel)
+
+    anio = request.query_params.get('anio', '').strip()
+    if anio and anio.isdigit():
+        qs = qs.filter(id_curso__anio=int(anio))
+
+    turno = request.query_params.get('turno', '').strip()
+    if turno and turno.lower() != 'todos':
+        qs = qs.filter(id_curso__turno__iexact=turno)
+
+    estado = request.query_params.get('estado', '').strip()
+    if estado and estado.lower() != 'todos':
+        qs = qs.filter(estado__iexact=estado)
+
+    fnac = request.query_params.get('fecha_nacimiento', '').strip()
+    if fnac:
+        try:
+            fecha_obj = date.fromisoformat(fnac)
+            qs = qs.filter(id_persona__fecha_nacimiento=fecha_obj)
+        except ValueError:
+            pass
+
+    anio_nac = request.query_params.get('anio_nacimiento', '').strip()
+    if anio_nac and anio_nac.isdigit():
+        qs = qs.filter(id_persona__fecha_nacimiento__year=int(anio_nac))
+
+    nac_desde = request.query_params.get('nacimiento_desde', '').strip()
+    if nac_desde:
+        try:
+            d = date.fromisoformat(nac_desde)
+            qs = qs.filter(id_persona__fecha_nacimiento__gte=d)
+        except ValueError:
+            pass
+
+    nac_hasta = request.query_params.get('nacimiento_hasta', '').strip()
+    if nac_hasta:
+        try:
+            h = date.fromisoformat(nac_hasta)
+            qs = qs.filter(id_persona__fecha_nacimiento__lte=h)
+        except ValueError:
+            pass
+
+    comedor = request.query_params.get('comedor', '').strip().lower()
+    if comedor in ('1', 'true', 'si', 'sí'):
+        qs = qs.filter(inscripto_comedor=True)
+    elif comedor in ('0', 'false', 'no'):
+        qs = qs.filter(inscripto_comedor=False)
+
+    return Response([_alumno_dict(a) for a in qs])
 
 
 @api_view(['GET'])

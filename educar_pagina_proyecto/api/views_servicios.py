@@ -22,12 +22,14 @@ from core.domain_services import (
 from core.models import (
     Alumno,
     Directivo,
+    Docente,
     GrupoDeportivo,
     InscripcionDeportiva,
     InscripcionTransporte,
     Noticia,
     Persona,
     PersonalAdministrativo,
+    Preceptor,
     RecorridoTransporte,
     Tutor,
     TutorTutoraAlumno,
@@ -46,13 +48,17 @@ def _obtener_rol_usuario(usuario):
         return 'alumno', persona
     if Directivo.objects.filter(id_persona=persona).exists():
         return 'directivo', persona
+    if Docente.objects.filter(id_persona=persona).exists():
+        return 'docente', persona
+    if Preceptor.objects.filter(id_persona=persona).exists():
+        return 'preceptor', persona
     return None, persona
 
 
 def _obtener_alumnos_autorizados(usuario):
     """Devuelve el queryset de Alumnos que este usuario puede consultar/gestionar."""
     rol, persona = _obtener_rol_usuario(usuario)
-    if rol in ('administrativo', 'directivo'):
+    if rol in ('administrativo', 'directivo', 'docente', 'preceptor'):
         return Alumno.objects.filter(estado='Activo')
     if rol == 'padre':
         tutor = Tutor.objects.filter(id_persona=persona).first()
