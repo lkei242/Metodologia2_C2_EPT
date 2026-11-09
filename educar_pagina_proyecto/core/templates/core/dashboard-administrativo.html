@@ -81,31 +81,31 @@
 
           <nav class="sidebar-nav" aria-label="Navegación del panel">
             <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
-              <span class="nav-icon">🏠</span> Inicio
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span> Inicio
             </button>
             <button type="button" onclick="showPanel('inscripciones', this)" aria-controls="panel-inscripciones" aria-pressed="false">
-              <span class="nav-icon">📝</span> Inscripciones
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m14 6 4 4"/></svg></span> Inscripciones
             </button>
             <button type="button" onclick="showPanel('pagos', this)" aria-controls="panel-pagos" aria-pressed="false">
-              <span class="nav-icon">💸</span> Pagos
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 12h.01M17.5 12h.01"/></svg></span> Pagos
             </button>
             <button type="button" onclick="showPanel('documentacion', this)" aria-controls="panel-documentacion" aria-pressed="false">
-              <span class="nav-icon">📄</span> Documentación
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span> Documentación
             </button>
             <button type="button" onclick="showPanel('reservas', this)" aria-controls="panel-reservas" aria-pressed="false">
-              <span class="nav-icon">🏨</span> Reservas
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg></span> Reservas
             </button>
             <button type="button" onclick="showPanel('opiniones', this)" aria-controls="panel-opiniones" aria-pressed="false">
-              <span class="nav-icon">💬</span> Opiniones
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.3A8 8 0 1 1 21 12Z"/></svg></span> Opiniones
             </button>
             <button type="button" onclick="showPanel('noticias', this)" aria-controls="panel-noticias" aria-pressed="false">
-              <span class="nav-icon">📰</span> Noticias
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5h12v14H6a2 2 0 0 1-2-2Z"/><path d="M16 9h4v8a2 2 0 0 1-2 2"/><path d="M7 9h6M7 13h6"/></svg></span> Noticias
             </button>
             <button type="button" onclick="showPanel('usuarios', this)" aria-controls="panel-usuarios" aria-pressed="false">
-              <span class="nav-icon">🔼</span> Gestión de usuarios
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2 21a7 7 0 0 1 14 0"/><circle cx="17" cy="9" r="2.8"/><path d="M17 14a6 6 0 0 1 5 6"/></svg></span> Gestión de usuarios
             </button>
             <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
-              <span class="nav-icon">👤</span> Mi perfil
+              <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span> Mi perfil
             </button>
           </nav>
         </aside>
@@ -229,6 +229,7 @@
                   <th>Mes</th>
                   <th>Importe</th>
                   <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
 
@@ -500,7 +501,7 @@
 
             {% for opinion in opiniones %}
             <div class="notif-item">
-              <div class="notif-icon" style="background: #dbeafe">💬</div>
+              <div class="notif-icon" style="background: #dbeafe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.3A8 8 0 1 1 21 12Z"/></svg></div>
 
               <div class="notif-text">
                 <strong>{{ opinion.nombre }}</strong>
@@ -634,6 +635,7 @@
           </div>
           <div id="panel-perfil" class="panel">
             <p class="section-title">Mi perfil</p>
+<div class="perfil-head"><div class="avatar perfil-avatar">{{ persona.nombre|slice:":1"|upper }}{{ persona.apellido|slice:":1"|upper }}</div><div><strong>{{ persona.nombre }} {{ persona.apellido }}</strong><span>Personal administrativo</span></div></div>
 
             <table class="tabla">
               <tbody>

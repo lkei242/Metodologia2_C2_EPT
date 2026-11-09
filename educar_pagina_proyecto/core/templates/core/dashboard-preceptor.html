@@ -147,25 +147,25 @@ document.querySelectorAll('.nota-input').forEach(input => {
 
         <nav class="sidebar-nav" aria-label="Navegación del panel">
           <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
-            <span class="nav-icon">🏠</span> Inicio
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span> Inicio
           </button>
           <button type="button" onclick="showPanel('notificaciones', this)" aria-controls="panel-notificaciones" aria-pressed="false">
-            <span class="nav-icon">🔔</span> Notificaciones
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 16V11a6 6 0 0 0-12 0v5l-2 2h16Z"/><path d="M10 21h4"/></svg></span> Notificaciones
           </button>
           <button type="button" onclick="showPanel('cursos', this)" aria-controls="panel-cursos" aria-pressed="false">
-            <span class="nav-icon">📚</span> Cursos
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2Z"/><path d="M4 21V5M8 7h6"/></svg></span> Cursos
           </button>
           <button type="button" id="menu-asistencias" onclick="showPanel('asistencias', this)" aria-controls="panel-asistencias" aria-pressed="false">
-            <span class="nav-icon">✅</span> Asistencias
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg></span> Asistencias
           </button>
           <button type="button" onclick="showPanel('justificaciones', this)" aria-controls="panel-justificaciones" aria-pressed="false">
-            <span class="nav-icon">📝</span> Justificaciones
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m14 6 4 4"/></svg></span> Justificaciones
           </button>
           <button type="button" onclick="showPanel('comunicados', this)" aria-controls="panel-comunicados" aria-pressed="false">
-            <span class="nav-icon">📢</span> Comunicados
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></svg></span> Comunicados
           </button>
           <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
-            <span class="nav-icon">👤</span> Mi perfil
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span> Mi perfil
           </button>
         </nav>
       </aside>
@@ -256,7 +256,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
           <p class="section-title" style="font-size:22.5px">Avisos del día</p>
           {% for noticia in noticias %}
           <div class="notif-item">
-            <div class="notif-icon" style="background:#dbeafe">📰</div>
+            <div class="notif-icon" style="background:#dbeafe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5h12v14H6a2 2 0 0 1-2-2Z"/><path d="M16 9h4v8a2 2 0 0 1-2 2"/><path d="M7 9h6M7 13h6"/></svg></div>
             <div class="notif-text">
               <strong>{{ noticia.titulo }}</strong>
               <span>{{ noticia.contenido }}</span>
@@ -541,7 +541,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
                       href="/media/{{ asistencia.archivo_justificacion }}"
                       target="_blank"
                   >
-                      📄 Ver justificación
+                      <svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> Ver justificación
                   </a>
               {% else %}
                   <span style="color:#dc3545;">
@@ -565,9 +565,9 @@ document.querySelectorAll('.nota-input').forEach(input => {
                       var panel = this.nextElementSibling;
                       var visible = panel.style.display !== 'none';
                       panel.style.display = visible ? 'none' : 'block';
-                      this.textContent = visible ? '📝 Agregar observación' : '✕ Cancelar';
+                      this.textContent = visible ? 'Agregar observación' : 'Cancelar';
                     "
-                >📝 Agregar observación</button>
+                ><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m14 6 4 4"/></svg> Agregar observación</button>
 
                 <div style="display:none; margin-top:12.5px;">
                   <label style="
@@ -578,7 +578,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
                     text-transform:uppercase;
                     letter-spacing:.05em;
                     margin-bottom:7.5px;
-                  ">📝 Observación del preceptor</label>
+                  "><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m14 6 4 4"/></svg> Observación del preceptor</label>
 
                   <textarea
                       name="observacion"
@@ -687,6 +687,7 @@ document.querySelectorAll('.nota-input').forEach(input => {
         <!-- PERFIL -->
         <div id="panel-perfil" class="panel">
           <p class="section-title">Mi perfil</p>
+<div class="perfil-head"><div class="avatar perfil-avatar">{{ persona.nombre|slice:":1"|upper }}{{ persona.apellido|slice:":1"|upper }}</div><div><strong>{{ persona.nombre }} {{ persona.apellido }}</strong><span>Preceptor</span></div></div>
 
           <table class="tabla">
             <tbody>

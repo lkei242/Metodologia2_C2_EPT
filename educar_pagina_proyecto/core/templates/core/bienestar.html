@@ -20,7 +20,7 @@
             <img src="{% static 'core/IMG/apoyo.jpg' %}" alt="Apoyo estudiantil" class="card-image" width="760" height="428" loading="lazy" decoding="async">
             <div class="card-content">
             <div class="card-title">
-                <div class="icon icon-green">♡</div>
+                <div class="icon icon-green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.6a5.5 5.5 0 0 0-.1-7.8Z"/></svg></div>
                 <span>Apoyo estudiantil</span>
             </div>
 
@@ -36,7 +36,7 @@
 
             <div class="card-content">
             <div class="card-title">
-                <div class="icon icon-blue">🌐</div>
+                <div class="icon icon-blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
                 <span>Idiomas</span>
             </div>
 
@@ -52,7 +52,7 @@
 
             <div class="card-content">
             <div class="card-title">
-                <div class="icon icon-pink">⚕</div>
+                <div class="icon icon-pink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16"/></svg></div>
                 <span>Enfermería</span>
             </div>
 
@@ -70,7 +70,7 @@
             <img src="{% static 'core/IMG/deportes.jpg' %}" alt="Deportes" class="card-image" width="713" height="475" loading="lazy" decoding="async">
           <div class="card-content">
             <div class="card-title">
-              <div class="icon icon-blue">⚽</div>
+              <div class="icon icon-blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m12 8 3.5 2.5-1.3 4h-4.4l-1.3-4Z"/><path d="M12 3v5M3.5 9.5 8.5 10.5M20.5 9.5l-5 1M6 19l3.8-4.5M18 19l-3.8-4.5"/></svg></div>
               <span>Deportes</span>
             </div>
             <p>
@@ -84,7 +84,7 @@
             <img src="{% static 'core/IMG/comedor.jpg' %}" alt="Comedor" class="card-image" width="640" height="360" loading="lazy" decoding="async">
           <div class="card-content">
             <div class="card-title">
-              <div class="icon icon-green">🍽</div>
+              <div class="icon icon-green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 3v8a2 2 0 0 0 2 2v8M10 3v8a2 2 0 0 1-2 2M8 3v6"/><path d="M17 21V3c-2 2-3 5-3 8h3"/></svg></div>
               <span>Comedor</span>
             </div>
             <p>
@@ -98,7 +98,7 @@
             <img src="{% static 'core/IMG/traslado.jpg' %}" alt="Micros de traslado" class="card-image" width="760" height="428" loading="lazy" decoding="async">
           <div class="card-content">
             <div class="card-title">
-              <div class="icon icon-pink">🚌</div>
+              <div class="icon icon-pink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M8 21v-3M16 21v-3"/><circle cx="8" cy="14.5" r=".6"/><circle cx="16" cy="14.5" r=".6"/></svg></div>
               <span>Micros de traslado</span>
             </div>
             <p>
@@ -110,6 +110,7 @@
       </section>
 
     </main>
+    {% include 'core/plantillas/pie.html' %}
 
   </div>
 

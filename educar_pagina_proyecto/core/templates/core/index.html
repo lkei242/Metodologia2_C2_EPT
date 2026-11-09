@@ -16,73 +16,44 @@
 
     <main id="contenido-principal" tabindex="-1">
       <section class="hero">
-        <div class="hero-logo-box">
-          <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
+        <div class="hero-main">
+          <div class="hero-strip" aria-hidden="true">
+            <i style="background:var(--logo-orange)"></i><i style="background:var(--logo-pink)"></i><i style="background:var(--logo-purple)"></i><i style="background:var(--logo-sky)"></i><i style="background:var(--logo-green)"></i>
+          </div>
+          <h1>Educar para <span>transformar</span></h1>
+          <p>
+            Inspiramos, acompañamos y formamos estudiantes seguros, creativos y comprometidos con su futuro,
+            integrando educación, bienestar y oportunidades en una misma comunidad.
+          </p>
+          <div class="hero-actions">
+            <a class="btn-primary" href="{% url 'inscripcion' %}">Inscribirme</a>
+            <a class="btn-secondary" href="{% url 'niveles' %}">Conocer los niveles</a>
+          </div>
         </div>
-        <h1>Educar para transformar</h1>
-        <p>
-          Inspiramos, acompañamos y formamos estudiantes seguros, creativos y comprometidos con su futuro,
-          integrando educación, bienestar y oportunidades en una misma comunidad.
-        </p>
+        <div class="hero-logo">
+          <img src="{% static 'core/IMG/logo.png' %}" alt="Logo de Educar para Transformar" width="506" height="410">
+        </div>
       </section>
 
-      <section class="cards">
-        <div class="card">
-          <div class="card-content">
-            <div class="card-title">
-              <div class="icon icon-blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 7v14"/><path d="M3 18.5V5.75A1.75 1.75 0 0 1 4.75 4H9a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4.25A1.75 1.75 0 0 1 21 5.75V18.5"/><path d="M3 18.5A1.5 1.5 0 0 0 4.5 20H12"/><path d="M21 18.5A1.5 1.5 0 0 1 19.5 20H12"/></svg></div>
-              <span>Niveles educativos</span>
-            </div>
-            <p>Propuesta académica para nivel inicial, primario y secundario con una formación integral.</p>
-          </div>
-          <div class="card-bottom gradient-blue">
-            <div class="inner-box">
-              <div>
-                <strong>Formación académica</strong>
-                <span>Trayectorias educativas pensadas para acompañar cada etapa.</span>
-              </div>
-              <div class="big-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 7v14"/><path d="M3 18.5V5.75A1.75 1.75 0 0 1 4.75 4H9a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4.25A1.75 1.75 0 0 1 21 5.75V18.5"/><path d="M3 18.5A1.5 1.5 0 0 0 4.5 20H12"/><path d="M21 18.5A1.5 1.5 0 0 1 19.5 20H12"/></svg></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-content">
-            <div class="card-title">
-              <div class="icon icon-green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg></div>
-              <span>Bienestar estudiantil</span>
-            </div>
-            <p>Espacios de apoyo, orientación y cuidado para fortalecer el desarrollo integral del alumno.</p>
-          </div>
-          <div class="card-bottom gradient-green">
-            <div class="inner-box">
-              <div>
-                <strong>Acompañamiento integral</strong>
-                <span>Servicios que priorizan la salud, la inclusión y el bienestar.</span>
-              </div>
-              <div class="big-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-content">
-            <div class="card-title">
-              <div class="icon icon-pink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 9h6M9 13h2M15 13h.01M9 17h1"/><path d="m14 16 1.5 1.5L19 14"/></svg></div>
-              <span>Inscripción a cursado</span>
-            </div>
-            <p>Acceso ágil a formularios, solicitudes e información de inscripción para nuevos estudiantes.</p>
-          </div>
-          <div class="card-bottom gradient-pink">
-            <div class="inner-box">
-              <div>
-                <strong>Gestión simple</strong>
-                <span>Procesos digitales para facilitar consultas y registros.</span>
-              </div>
-              <div class="big-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 9h6M9 13h2M15 13h.01M9 17h1"/><path d="m14 16 1.5 1.5L19 14"/></svg></div>
-            </div>
-          </div>
-        </div>
+      <section class="cards" aria-label="Accesos principales">
+        <article class="bento-card bento-sky">
+          <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 7v14"/><path d="M3 18.5V5.75A1.75 1.75 0 0 1 4.75 4H9a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4.25A1.75 1.75 0 0 1 21 5.75V18.5"/><path d="M3 18.5A1.5 1.5 0 0 0 4.5 20H12"/><path d="M21 18.5A1.5 1.5 0 0 1 19.5 20H12"/></svg></div>
+          <h3>Niveles educativos</h3>
+          <p>Propuesta académica para nivel inicial, primario y secundario con una formación integral.</p>
+          <a class="bento-more" href="{% url 'niveles' %}">Ver los niveles →</a>
+        </article>
+        <article class="bento-card bento-green">
+          <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg></div>
+          <h3>Bienestar estudiantil</h3>
+          <p>Espacios de apoyo, orientación y cuidado para fortalecer el desarrollo integral del alumno.</p>
+          <a class="bento-more" href="{% url 'bienestar' %}">Conocer los servicios →</a>
+        </article>
+        <article class="bento-card bento-pink">
+          <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 9h6M9 13h2M15 13h.01M9 17h1"/><path d="m14 16 1.5 1.5L19 14"/></svg></div>
+          <h3>Inscripción a cursado</h3>
+          <p>Acceso ágil a formularios, solicitudes e información de inscripción para nuevos estudiantes.</p>
+          <a class="bento-more" href="{% url 'inscripcion' %}">Iniciar inscripción →</a>
+        </article>
       </section>
 
     <section class="gallery-section">
@@ -138,6 +109,7 @@
     </section>
     
     </main>
+    {% include 'core/plantillas/pie.html' %}
   </div>
 
     <script>

@@ -8,20 +8,20 @@
 
 :root {
   color-scheme: light;
-  --ink: #18324b;
-  --text: #344c62;
-  --muted: #62758a;
-  --canvas: #f6f9fc;
+  --ink: #0f2a4d;
+  --text: #3a4d66;
+  --muted: #5b6b80;
+  --canvas: #f6f9fd;
   --surface: #ffffff;
   --surface-soft: #eef4fa;
-  --border: #dce6ef;
-  --blue: #1d66c2;
-  --blue-deep: #17569f;
-  --blue-soft: #e8f2ff;
-  --green: #4c7a2e;
-  --green-soft: #edf6e7;
-  --pink: #b91d6a;
-  --pink-soft: #fcebf4;
+  --border: #dce5f0;
+  --blue: #0b4da8;
+  --blue-deep: #093c82;
+  --blue-soft: #eaf4fd;
+  --green: #3f6b14;
+  --green-soft: #f1f8e8;
+  --pink: #a10762;
+  --pink-soft: #fde8f3;
   --warning: #9b5b10;
   --shadow-card: 0 10px 32.5px rgba(24, 50, 75, 0.07);
   --shadow-pop: 0 22.5px 60px rgba(24, 50, 75, 0.16);

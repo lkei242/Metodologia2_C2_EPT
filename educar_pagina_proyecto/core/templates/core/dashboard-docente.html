@@ -39,22 +39,22 @@
         <nav class="sidebar-nav" aria-label="Navegación del panel">
           <a href="{% url 'reportes' %}?reporte=R-02">Reporte de mis cursos</a>
           <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
-            <span class="nav-icon">🏠</span> Inicio
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span> Inicio
           </button>
           <button type="button" onclick="showPanel('cursos', this)" aria-controls="panel-cursos" aria-pressed="false">
-            <span class="nav-icon">📚</span> Mis cursos
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2Z"/><path d="M4 21V5M8 7h6"/></svg></span> Mis cursos
           </button>
           <button type="button" onclick="showPanel('notas', this)" aria-controls="panel-notas" aria-pressed="false">
-            <span class="nav-icon">📝</span> Cargar notas
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m14 6 4 4"/></svg></span> Cargar notas
           </button>
           <button type="button" onclick="showPanel('tareas', this)" aria-controls="panel-tareas" aria-pressed="false">
-            <span class="nav-icon">📋</span> Tareas y evaluaciones
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6M9 18h3"/></svg></span> Tareas y evaluaciones
           </button>
           <button type="button" onclick="showPanel('horario', this)" aria-controls="panel-horario" aria-pressed="false">
-            <span class="nav-icon">📅</span> Mi horario
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span> Mi horario
           </button>
           <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
-            <span class="nav-icon">👤</span> Mi perfil
+            <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span> Mi perfil
           </button>
         </nav>
       </aside>
@@ -118,7 +118,7 @@
 
           {% for materia in materias %}
             <h3 style="margin: 30px 0 12.5px 0; color:#1e3a5f; font-size:1.05em; border-bottom: 2.5px solid #e2e8f0; padding-bottom:7.5px;">
-              📘 {{ materia.nombre }}
+              <svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2Z"/><path d="M4 21V5M8 7h6"/></svg> {{ materia.nombre }}
             </h3>
 
             <table class="tabla">
@@ -267,6 +267,7 @@
         <!-- PERFIL -->
         <div id="panel-perfil" class="panel">
           <p class="section-title">Mi perfil docente</p>
+<div class="perfil-head"><div class="avatar perfil-avatar">{{ persona.nombre|slice:":1"|upper }}{{ persona.apellido|slice:":1"|upper }}</div><div><strong>{{ persona.nombre }} {{ persona.apellido }}</strong><span>Docente</span></div></div>
           <table class="tabla">
             <tbody>
               <tr><td style="font-weight:600;color:#64748b">Nombre completo</td><td>{{ persona.nombre }} {{ persona.apellido }}</td></tr>

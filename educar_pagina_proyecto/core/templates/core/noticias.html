@@ -31,17 +31,16 @@
 
         <div class="card">
 
-        {% if noticia.imagen %}
-            <img
-                src="/media/{{ noticia.imagen }}"
-                alt="Noticia institucional"
-                class="card-image" width="800" height="450" loading="lazy" decoding="async">
-        {% endif %}
+        <img
+            src="{% if noticia.imagen %}/media/{{ noticia.imagen }}{% else %}{% static 'core/IMG/escuela0.jpg' %}{% endif %}"
+            alt="Imagen de la noticia: {{ noticia.titulo }}"
+            class="card-image" width="800" height="450" decoding="async"
+            onerror="this.onerror=null;this.src='{% static 'core/IMG/escuela0.jpg' %}';">
 
         <div class="card-content">
 
             <div class="card-title">
-                <div class="icon icon-blue">📰</div>
+                <div class="icon icon-blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5h12v14H6a2 2 0 0 1-2-2Z"/><path d="M16 9h4v8a2 2 0 0 1-2 2"/><path d="M7 9h6M7 13h6"/></svg></div>
                 <span>{{ noticia.titulo }}</span>
             </div>
 
@@ -62,6 +61,7 @@
     </section>
 
     </main>
+    {% include 'core/plantillas/pie.html' %}
 
   </div>
 

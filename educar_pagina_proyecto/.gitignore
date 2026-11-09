@@ -34,3 +34,6 @@ staticfiles/
 
 # Volcados de datos (contienen datos personales)
 respaldo_core.json
+
+# Copias de seguridad de la base de datos local
+db.sqlite3.*
