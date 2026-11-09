@@ -74,8 +74,6 @@
           </div>
 
           <nav class="sidebar-nav" aria-label="Navegación del panel">
-            <a href="{% url 'reportes' %}?reporte=R-01"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span> Consulta de mi/s hijo/s</a>
-            <a href="{% url 'familia-servicios' %}"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m12 8 3.5 2.5-1.3 4h-4.4l-1.3-4Z"/><path d="M12 3v5M3.5 9.5l5 1M20.5 9.5l-5 1M6 19l3.8-4.5M18 19l-3.8-4.5"/></svg></span> Deportes y transporte</a>
             <button type="button" class="active" onclick="showPanel('inicio', this)" aria-controls="panel-inicio" aria-pressed="true">
               <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span> Inicio
             </button>
@@ -113,6 +111,9 @@
             <button type="button" onclick="showPanel('perfil', this)" aria-controls="panel-perfil" aria-pressed="false">
               <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span> Mi perfil
             </button>
+
+            <a href="{% url 'reportes' %}?reporte=R-01"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span> Consulta de mi/s hijo/s</a>
+            <a href="{% url 'familia-servicios' %}"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m12 8 3.5 2.5-1.3 4h-4.4l-1.3-4Z"/><path d="M12 3v5M3.5 9.5l5 1M20.5 9.5l-5 1M6 19l3.8-4.5M18 19l-3.8-4.5"/></svg></span> Deportes y transporte</a>
           </nav>
         </aside>
 
@@ -420,7 +421,7 @@
 
                   {% endfor %}
 
-                  <p class="section-title">
+                  <p class="portal-intro">
                       Adjunte la documentación obligatoria para completar el legajo.
                   </p>
 

@@ -1,0 +1,21 @@
+{% load static %}
+<header>
+  <a href="{% url 'index' %}" class="brand">
+    <img src="{% static 'core/IMG/logo.png' %}" alt="" aria-hidden="true" width="506" height="410">
+    <div>
+      <div class="brand-title">Educar para Transformar</div>
+      <div class="brand-subtitle">{% if dashboard_url == 'dashboard-padres' %}Portal del Tutor{% elif dashboard_url == 'dashboard-alumno' %}Portal del Alumno{% elif dashboard_url == 'dashboard-docente' %}Portal del Docente{% elif dashboard_url == 'dashboard-preceptor' %}Portal del Preceptor{% elif dashboard_url == 'dashboard-directivo' %}Portal Directivo{% elif dashboard_url == 'dashboard-administrativo' %}Portal Administrativo{% else %}Centro Educativo{% endif %}</div>
+    </div>
+  </a>
+
+  <nav aria-label="Navegación del portal"></nav>
+
+  <div class="login">
+    {% if dashboard_url %}
+    <a href="{% url dashboard_url %}" class="btn-volver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver al panel
+    </a>
+    {% endif %}
+  </div>
+</header>

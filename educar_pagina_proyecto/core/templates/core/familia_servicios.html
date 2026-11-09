@@ -1,6 +1,98 @@
-{% load static %}<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Servicios de mis hijos</title><link rel="stylesheet" href="{% static 'core/css/gestion.css' %}"></head><body>
-  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a><main id="contenido-principal" class="wrap" tabindex="-1"><header><div><p class="eyebrow">Portal del tutor</p><h1>Deportes y transporte</h1><p class="intro">Solo aparecen los hijos vinculados a tu cuenta. La inscripción al comedor la gestiona Administración.</p></div><a class="button secondary" href="{% url 'dashboard-padres' %}">Volver al portal</a></header>{% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
-{% for a in hijos %}<section><h2>{{ a.id_persona.apellido }}, {{ a.id_persona.nombre }}{% if a.id_curso %} · {{ a.id_curso.nivel }} {{ a.id_curso.anio }}° {{ a.id_curso.comision }}{% endif %}</h2>
-<h3>Inscripciones deportivas activas</h3><ul>{% for i in a.inscripciones_deportivas.all %}{% if i.estado == 'Activa' %}<li>{{ i.grupo.disciplina.nombre }} — {{ i.grupo.nivel }}, {{ i.grupo.dia_semana }} {{ i.grupo.hora_inicio|time:'H:i' }}–{{ i.grupo.hora_fin|time:'H:i' }} <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="finalizar"><input type="hidden" name="alumno" value="{{ a.pk }}"><input type="hidden" name="inscripcion" value="{{ i.pk }}"><button class="danger">Finalizar</button></form></li>{% endif %}{% empty %}<li>No tiene deportes inscriptos.</li>{% endfor %}</ul>
-<form method="post" class="filters">{% csrf_token %}<input type="hidden" name="action" value="deporte"><input type="hidden" name="alumno" value="{{ a.pk }}"><label>Inscribir a un grupo<select name="grupo" required><option value="">Seleccione</option>{% for g in grupos %}<option value="{{ g.pk }}">{{ g.disciplina.nombre }} · {{ g.nivel }} · {{ g.dia_semana }} {{ g.hora_inicio|time:'H:i' }}–{{ g.hora_fin|time:'H:i' }}</option>{% endfor %}</select></label><button>Inscribir</button></form>
-<h3>Transporte</h3><p>{% for t in a.inscripciones_transporte.all %}{% if t.estado == 'Activa' %}Recorrido actual: {{ t.recorrido.nombre }}{% endif %}{% empty %}Sin recorrido asignado{% endfor %}</p><form method="post" class="filters">{% csrf_token %}<input type="hidden" name="action" value="transporte"><input type="hidden" name="alumno" value="{{ a.pk }}"><label>Cambiar recorrido<select name="recorrido"><option value="">Sin transporte</option>{% for r in recorridos %}<option value="{{ r.pk }}">{{ r.nombre }}</option>{% endfor %}</select></label><button>Guardar transporte</button></form></section>{% empty %}<section class="empty">No hay hijos vinculados a esta cuenta.</section>{% endfor %}</main></body></html>
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deportes y transporte</title>
+  <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
+</head>
+<body>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
+  <div class="page">
+    {% include 'core/plantillas/cabecera_portal.html' %}
+
+    <main id="contenido-principal" class="portal-main" tabindex="-1">
+      <p class="portal-eyebrow">Portal del tutor</p>
+      <h1>Deportes y transporte</h1>
+      <p class="portal-intro">Solo aparecen los hijos vinculados a tu cuenta. La inscripción al comedor la gestiona Administración.</p>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="portal-notice {{ message.tags }}" role="status">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+
+      {% for a in hijos %}
+      <section class="child-card" aria-labelledby="hijo-{{ a.pk }}">
+        <div class="child-head">
+          <div class="avatar child-avatar" aria-hidden="true">{{ a.id_persona.nombre|slice:":1"|upper }}{{ a.id_persona.apellido|slice:":1"|upper }}</div>
+          <div>
+            <h2 id="hijo-{{ a.pk }}">{{ a.id_persona.apellido }}, {{ a.id_persona.nombre }}</h2>
+            {% if a.id_curso %}<span class="chip">{{ a.id_curso.nivel }} {{ a.id_curso.anio }}° {{ a.id_curso.comision }}</span>{% endif %}
+          </div>
+        </div>
+
+        <div class="child-grid">
+          <div class="service-box">
+            <h3><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m12 8 3.5 2.5-1.3 4h-4.4l-1.3-4Z"/><path d="M12 3v5M3.5 9.5l5 1M20.5 9.5l-5 1M6 19l3.8-4.5M18 19l-3.8-4.5"/></svg>Deportes</h3>
+            <p class="service-label">Inscripciones activas</p>
+            <ul class="service-list">
+              {% for i in a.inscripciones_deportivas.all %}{% if i.estado == 'Activa' %}
+              <li>
+                <div>
+                  <strong>{{ i.grupo.disciplina.nombre }}</strong>
+                  <span>{{ i.grupo.nivel }} · {{ i.grupo.dia_semana }} {{ i.grupo.hora_inicio|time:'H:i' }}–{{ i.grupo.hora_fin|time:'H:i' }}</span>
+                </div>
+                <form method="post" class="inline-form">{% csrf_token %}
+                  <input type="hidden" name="action" value="finalizar">
+                  <input type="hidden" name="alumno" value="{{ a.pk }}">
+                  <input type="hidden" name="inscripcion" value="{{ i.pk }}">
+                  <button type="submit" class="btn-quiet-danger">Finalizar</button>
+                </form>
+              </li>
+              {% endif %}{% empty %}
+              <li class="service-empty">No tiene deportes inscriptos.</li>
+              {% endfor %}
+            </ul>
+
+            <form method="post" class="service-form">{% csrf_token %}
+              <input type="hidden" name="action" value="deporte">
+              <input type="hidden" name="alumno" value="{{ a.pk }}">
+              <label for="grupo-{{ a.pk }}">Inscribir a un grupo</label>
+              <div class="service-form-row">
+                <select id="grupo-{{ a.pk }}" name="grupo" required>
+                  <option value="">Seleccione</option>
+                  {% for g in grupos %}<option value="{{ g.pk }}">{{ g.disciplina.nombre }} · {{ g.nivel }} · {{ g.dia_semana }} {{ g.hora_inicio|time:'H:i' }}–{{ g.hora_fin|time:'H:i' }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn-primary-sm">Inscribir</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="service-box">
+            <h3><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M8 21v-3M16 21v-3"/><circle cx="8" cy="14.5" r=".6"/><circle cx="16" cy="14.5" r=".6"/></svg>Transporte</h3>
+            <p class="service-label">Recorrido actual</p>
+            <p class="route-now">{% for t in a.inscripciones_transporte.all %}{% if t.estado == 'Activa' %}<span class="chip chip-green">{{ t.recorrido.nombre }}</span>{% endif %}{% empty %}<span class="chip chip-muted">Sin recorrido asignado</span>{% endfor %}</p>
+
+            <form method="post" class="service-form">{% csrf_token %}
+              <input type="hidden" name="action" value="transporte">
+              <input type="hidden" name="alumno" value="{{ a.pk }}">
+              <label for="recorrido-{{ a.pk }}">Cambiar recorrido</label>
+              <div class="service-form-row">
+                <select id="recorrido-{{ a.pk }}" name="recorrido">
+                  <option value="">Sin transporte</option>
+                  {% for r in recorridos %}<option value="{{ r.pk }}">{{ r.nombre }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn-primary-sm">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+      {% empty %}
+      <section class="child-card portal-empty">No hay hijos vinculados a esta cuenta.</section>
+      {% endfor %}
+    </main>
+  </div>
+</body>
+</html>
