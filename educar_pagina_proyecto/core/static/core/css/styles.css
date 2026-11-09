@@ -1878,6 +1878,10 @@ main > h1:first-child {
   position: sticky;
   top: 0;
   z-index: 50;
+  /* La barra ocupa todo el ancho; el límite de 1800px se aplica como padding interno */
+  width: 100%;
+  margin: 0;
+  padding-inline: calc(max(0px, (100% - 1800px) / 2) + clamp(22.5px, 5vw, 65px));
   border-bottom: 1px solid var(--border);
   background: #fff;
 }
