@@ -52,6 +52,42 @@ COMUNICADOS_FILE = os.path.join(os.path.dirname(__file__), 'comunicados.json')
 OPINIONES_FILE = os.path.join(os.path.dirname(__file__), 'opiniones.json')
 
 
+def leer_archivo_json(ruta_archivo):
+    """Lee y retorna el contenido de un archivo JSON. Devuelve una lista vacía si el archivo
+    no existe, está vacío o contiene JSON inválido."""
+    if not os.path.exists(ruta_archivo):
+        return []
+    try:
+        with open(ruta_archivo, 'r', encoding='utf-8') as f:
+            contenido = f.read().strip()
+            return json.loads(contenido) if contenido else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def guardar_archivo_json(ruta_archivo, datos):
+    """Guarda una lista de datos en un archivo JSON."""
+    with open(ruta_archivo, 'w', encoding='utf-8') as f:
+        json.dump(datos, f, ensure_ascii=False, indent=2)
+
+
+def determinar_dashboard_url(persona):
+    """Determina la URL del panel de control según el rol de la persona."""
+    if PersonalAdministrativo.objects.filter(id_persona=persona).exists():
+        return 'dashboard-administrativo'
+    if Docente.objects.filter(id_persona=persona).exists():
+        return 'dashboard-docente'
+    if Tutor.objects.filter(id_persona=persona).exists():
+        return 'dashboard-padres'
+    if Preceptor.objects.filter(id_persona=persona).exists():
+        return 'dashboard-preceptor'
+    if Directivo.objects.filter(id_persona=persona).exists():
+        return 'dashboard-directivo'
+    if Alumno.objects.filter(id_persona=persona).exists():
+        return 'dashboard-alumno'
+    return 'login'
+
+
 def obtener_persona(request):
     """Obtiene la instancia de Persona asociada al usuario autenticado en la sesión."""
     usuario_id = request.session.get('usuario_id')
@@ -98,16 +134,8 @@ def bienestar(request):
 
 def contacto(request):
     """Página de contacto y visualización de opiniones recibidas."""
-    opiniones = []
-    if os.path.exists(OPINIONES_FILE):
-        try:
-            with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-                contenido = f.read().strip()
-                if contenido:
-                    opiniones = json.loads(contenido)
-                    opiniones.reverse()
-        except (json.JSONDecodeError, FileNotFoundError):
-            opiniones = []
+    opiniones = leer_archivo_json(OPINIONES_FILE)
+    opiniones.reverse()
 
     persona, dashboard_url = obtener_datos_sesion(request)
     return render(request, 'core/contacto.html', {
@@ -517,25 +545,19 @@ def dashboard_alumno(request):
     comunicados_file_path = os.path.join(settings.BASE_DIR, "core", "comunicados.json")
     comunicados_alumno, ultimos_comunicados = [], []
 
-    if os.path.exists(comunicados_file_path):
-        try:
-            with open(comunicados_file_path, 'r', encoding='utf-8') as f:
-                file_content = f.read().strip()
-                comunicados = json.loads(file_content) if file_content else []
-                comunicados_alumno = [
-                    item for item in comunicados
-                    if (
-                        item.get('rol') == 'Directivo'
-                        or (
-                            item.get('rol') == 'Preceptor'
-                            and item.get('curso', '').strip().lower() == curso_alumno.strip().lower()
-                        )
-                    )
-                ]
-                comunicados_alumno.reverse()
-            ultimos_comunicados = comunicados_alumno[:3]
-        except json.JSONDecodeError:
-            comunicados_alumno, ultimos_comunicados = [], []
+    comunicados = leer_archivo_json(comunicados_file_path)
+    comunicados_alumno = [
+        item for item in comunicados
+        if (
+            item.get('rol') == 'Directivo'
+            or (
+                item.get('rol') == 'Preceptor'
+                and item.get('curso', '').strip().lower() == curso_alumno.strip().lower()
+            )
+        )
+    ]
+    comunicados_alumno.reverse()
+    ultimos_comunicados = comunicados_alumno[:3]
     
     tareas_alumno = []
     if materias.exists():
@@ -610,33 +632,27 @@ def dashboard_docente(request):
 
     tareas = Tarea.objects.filter(docente=docente).select_related('curso_destinado', 'materia').order_by('-fecha_creacion')
 
-    # calificaciones
     calificaciones = Calificacion.objects.filter(
         id_materia__in=materias,
         legajo_alumno__in=alumnos
     ).select_related('id_materia', 'legajo_alumno')
 
-    # diccionario de notas
-    # diccionario de notas (agrupado por tipo de bimestre)
-    # diccionario de notas (agrupado por tipo de bimestre)
     notas_por_alumno = {}
-    for c in calificaciones:
-        alumno_id = c.legajo_alumno_id
-        
-        # Crear entrada si no existe
+    for calificacion in calificaciones:
+        alumno_id = calificacion.legajo_alumno_id
+
         if alumno_id not in notas_por_alumno:
             notas_por_alumno[alumno_id] = {'trim1': '', 'trim2': '', 'trim3': ''}
 
-        val_nota = float(c.nota) if c.nota is not None else ''
-        
-        # Asignar nota según el tipo de evaluación
-        if c.tipo_evaluacion == '1° Bimestre':
-            notas_por_alumno[alumno_id]['trim1'] = str(val_nota)  # Convertir a string para mostrar
-        elif c.tipo_evaluacion == '2° Bimestre':
-            notas_por_alumno[alumno_id]['trim2'] = str(val_nota)
-        elif c.tipo_evaluacion == '3° Bimestre':
-            notas_por_alumno[alumno_id]['trim3'] = str(val_nota)
-    # cursos
+        valor_nota = float(calificacion.nota) if calificacion.nota is not None else ''
+
+        if calificacion.tipo_evaluacion == '1° Bimestre':
+            notas_por_alumno[alumno_id]['trim1'] = str(valor_nota)
+        elif calificacion.tipo_evaluacion == '2° Bimestre':
+            notas_por_alumno[alumno_id]['trim2'] = str(valor_nota)
+        elif calificacion.tipo_evaluacion == '3° Bimestre':
+            notas_por_alumno[alumno_id]['trim3'] = str(valor_nota)
+
     cursos_data = []
     for curso in cursos:
         alumnos_count = Alumno.objects.filter(id_curso=curso).count()
@@ -651,17 +667,16 @@ def dashboard_docente(request):
             'promedio': round(promedio, 1) if promedio else 0,
         })
 
-    # horarios
     horarios = CursoCursaMaterias.objects.filter(
         id_materia__in=materias
     ).select_related('id_curso', 'id_materia')
 
     horario_dict = {}
-    for h in horarios:
-        data = h.horarios
-        if isinstance(data, str):
-            data = json.loads(data)
-        for dia, rango in data.items():
+    for horario_materia in horarios:
+        datos_horarios = horario_materia.horarios
+        if isinstance(datos_horarios, str):
+            datos_horarios = json.loads(datos_horarios)
+        for dia, rango in datos_horarios.items():
             if rango not in horario_dict:
                 horario_dict[rango] = {
                     'Lunes': '-',
@@ -670,10 +685,11 @@ def dashboard_docente(request):
                     'Jueves': '-',
                     'Viernes': '-',
                 }
-            dia_cap = dia.capitalize()
-            if dia_cap == 'Miercoles':
-                dia_cap = 'Miércoles'
-            horario_dict[rango][dia_cap] = f"{h.id_curso.anio}° {h.id_curso.nivel} ({h.id_curso.comision}) - {h.id_curso.turno}"
+            dia_formateado = dia.capitalize()
+            if dia_formateado == 'Miercoles':
+                dia_formateado = 'Miércoles'
+            curso = horario_materia.id_curso
+            horario_dict[rango][dia_formateado] = f"{curso.anio}° {curso.nivel} ({curso.comision}) - {curso.turno}"
     cantidad_tareas = tareas.count()
     return render(request, 'core/dashboard-docente.html', {
         'persona': persona,
@@ -705,19 +721,19 @@ def horario_docente(request):
         docentedictamateria__id_docente=docente
     ).distinct()
 
-    cursos = CursoCursaMaterias.objects.filter(
+    cursos_materia = CursoCursaMaterias.objects.filter(
         id_materia__in=materias
     )
 
     horario = {}
 
-    for c in cursos:
-        data = c.horarios
+    for curso_materia in cursos_materia:
+        datos_horarios = curso_materia.horarios
 
-        if isinstance(data, str):
-            data = json.loads(data)
+        if isinstance(datos_horarios, str):
+            datos_horarios = json.loads(datos_horarios)
 
-        for dia, rango in data.items():
+        for dia, rango in datos_horarios.items():
             if rango not in horario:
                 horario[rango] = {
                     "Lunes": "-",
@@ -727,12 +743,12 @@ def horario_docente(request):
                     "Viernes": "-"
                 }
 
-            dia_cap = dia.capitalize()
+            dia_formateado = dia.capitalize()
 
-            if dia_cap == "Miercoles":
-                dia_cap = "Miércoles"
+            if dia_formateado == "Miercoles":
+                dia_formateado = "Miércoles"
 
-            horario[rango][dia_cap] = c.id_curso.comision
+            horario[rango][dia_formateado] = curso_materia.id_curso.comision
 
     return render(request, "tu_template.html", {
         "horario": horario
@@ -879,37 +895,23 @@ def enviar_postulacion(request):
 
         ruta_cv = None
         
-        print("CORREO RECIBIDO:", repr(correo))
-        
-        print(
-            "VALIDACION:",
-            bool(re.match(r"^[^@]+@[^@]+\.[^@]+$", correo))
-)
-        
         if not nombre.replace(" ", "").isalpha():
-            print("Nombre inválido")
             return redirect('postulacion')
 
         if not apellido.replace(" ", "").isalpha():
-            print("Apellido inválido")
             return redirect('postulacion')
 
         if not dni.isdigit():
-            print("DNI inválido")
             return redirect('postulacion')
 
         if len(dni) < 7 or len(dni) > 8:
-            print("DNI inválido")
             return redirect('postulacion')
 
         if not re.match(r"^[^@]+@[^@]+\.[^@]+$", correo):
-            print("Correo inválido")
             messages.error(request, "Ingrese un correo electrónico válido.")
-            print("MENSAJE AGREGADO")
             return redirect('postulacion')
 
         if not telefono.isdigit():
-            print("Teléfono inválido")
             return redirect('postulacion')
 
         if cv:
@@ -930,8 +932,6 @@ def enviar_postulacion(request):
             fecha_postulacion=datetime.now()
         )
 
-        print("Postulación guardada correctamente")
-        
         correo = EmailMessage(
             subject=f"Nueva postulación - {nombre} {apellido}",
             body=f"""
@@ -1020,7 +1020,6 @@ def enviar_consulta(request):
             })
 
         except Exception as e:
-            print("ERROR RESEND:", e)
             raise
 
         messages.success(
@@ -1066,11 +1065,7 @@ def dashboard_administrativo(request):
         'id_persona_solicitante'
     ).all()
     
-    if os.path.exists(OPINIONES_FILE):
-        with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-            opiniones = json.load(f)
-    else:
-        opiniones = []
+    opiniones = leer_archivo_json(OPINIONES_FILE)
     
     cuotas = Cuota.objects.select_related(
         'id_tutor__id_persona',
@@ -1188,7 +1183,6 @@ def rechazar_inscripcion(request, id_solicitud):
 @require_POST
 @requiere_roles("dashboard-administrativo")
 def crear_reserva(request):
-    print(request.POST)
 
     if request.method == "POST":
 
@@ -1290,17 +1284,11 @@ def crear_reserva(request):
 def eliminar_opinion(request, indice):
 
     if request.method == "POST":
+        opiniones = leer_archivo_json(OPINIONES_FILE)
 
-        if os.path.exists(OPINIONES_FILE):
-
-            with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-                opiniones = json.load(f)
-
-            if 0 <= indice < len(opiniones):
-                opiniones.pop(indice)
-
-            with open(OPINIONES_FILE, 'w', encoding='utf-8') as f:
-                json.dump(opiniones, f, ensure_ascii=False, indent=2)
+        if 0 <= indice < len(opiniones):
+            opiniones.pop(indice)
+            guardar_archivo_json(OPINIONES_FILE, opiniones)
 
     return redirect('dashboard-administrativo')
 
@@ -1475,7 +1463,6 @@ def dashboard_padres(request):
                 'documentacion': documentacion,
             })
 
-    # 📊 promedio general
     promedio_general = round(
         suma_promedios / cantidad_promedios,
         2
@@ -1488,7 +1475,6 @@ def dashboard_padres(request):
         0
     ) if total_asistencias else 0
 
-    # 📢 COMUNICADOS (JSON) SOLO DIRECTIVOS
     COMUNICADOS_FILE = os.path.join(
         settings.BASE_DIR,
         "core",
@@ -1503,53 +1489,42 @@ def dashboard_padres(request):
     def parse_fecha(c):
         try:
             return datetime.strptime(c.get("fecha", ""), '%d/%m/%Y %H:%M')
-        except:
+        except (ValueError, TypeError):
             return datetime.min
 
-    if os.path.exists(COMUNICADOS_FILE):
+    comunicados = leer_archivo_json(COMUNICADOS_FILE)
 
-        try:
-            with open(COMUNICADOS_FILE, 'r', encoding='utf-8') as f:
-                file_content = f.read().strip()
-                comunicados = json.loads(file_content) if file_content else []
+    for relacion in relaciones:
 
-            for relacion in relaciones:
+        alumno = relacion.id_alumno
+        curso_alumno = f"{alumno.id_curso.nivel} {alumno.id_curso.anio}° {alumno.id_curso.comision}"
 
-                alumno = relacion.id_alumno
-                curso_alumno = f"{alumno.id_curso.nivel} {alumno.id_curso.anio}° {alumno.id_curso.comision}"
+        for c in comunicados:
 
-                for c in comunicados:
-
-                    clave = (
-                        c.get('titulo'),
-                        c.get('fecha'),
-                        c.get('rol')
-                    )
-
-                    if clave in vistos:
-                        continue
-
-                    # Directivo siempre
-                    if c.get('rol') == 'Directivo':
-                        comunicados_filtrados.append(c)
-                        vistos.add(clave)
-
-                    # Preceptor solo si coincide curso
-                    elif (
-                        c.get('rol') == 'Preceptor'
-                        and c.get('curso', '').strip().lower() == curso_alumno.strip().lower()
-                    ):
-                        comunicados_filtrados.append(c)
-                        vistos.add(clave)
-
-            # 🔥 ORDEN CORRECTO (más nuevos primero)
-            comunicados_filtrados.sort(
-                key=parse_fecha,
-                reverse=True
+            clave = (
+                c.get('titulo'),
+                c.get('fecha'),
+                c.get('rol')
             )
 
-        except json.JSONDecodeError:
-            comunicados_filtrados = []
+            if clave in vistos:
+                continue
+
+            if c.get('rol') == 'Directivo':
+                comunicados_filtrados.append(c)
+                vistos.add(clave)
+
+            elif (
+                c.get('rol') == 'Preceptor'
+                and c.get('curso', '').strip().lower() == curso_alumno.strip().lower()
+            ):
+                comunicados_filtrados.append(c)
+                vistos.add(clave)
+
+    comunicados_filtrados.sort(
+        key=parse_fecha,
+        reverse=True
+    )
     panel_activo = request.session.pop("panel_activo", "inicio")
     
     cuotas_pendientes = Cuota.objects.filter(
@@ -1706,40 +1681,22 @@ def dashboard_preceptor(request):
     ).count()
     cursos_pendientes = []
 
-    if os.path.exists(COMUNICADOS_FILE):
+    comunicados = leer_archivo_json(COMUNICADOS_FILE)
 
-        try:
-
-            with open(
-                COMUNICADOS_FILE,
-                'r',
-                encoding='utf-8'
-            ) as f:
-
-                comunicados = json.load(f)
-
-                contador = 0
-
-                for comunicado in reversed(comunicados):
-
-                    if comunicado.get('rol') == 'Directivo':
-
-                        notificaciones.append({
-                            'tipo': 'comunicado',
-                            'icono': '📢',
-                            'color': '#dbeafe',
-                            'titulo': comunicado.get('titulo'),
-                            'mensaje': comunicado.get('contenido'),
-                            'fecha': comunicado.get('fecha')
-                        })
-
-                        contador += 1
-
-                        if contador == 3:
-                            break
-
-        except Exception:
-            pass
+    contador = 0
+    for comunicado in reversed(comunicados):
+        if comunicado.get('rol') == 'Directivo':
+            notificaciones.append({
+                'tipo': 'comunicado',
+                'icono': '📢',
+                'color': '#dbeafe',
+                'titulo': comunicado.get('titulo'),
+                'mensaje': comunicado.get('contenido'),
+                'fecha': comunicado.get('fecha')
+            })
+            contador += 1
+            if contador == 3:
+                break
     for curso in cursos:
 
         curso.asistencia_tomada = Asistencia.objects.filter(
@@ -1838,19 +1795,16 @@ def crear_noticia(request):
         ruta_imagen = None
 
         if imagen:
+            fs = FileSystemStorage(
+                location=os.path.join(settings.MEDIA_ROOT, 'noticias')
+            )
 
-            if imagen:
+            nombre_archivo = fs.save(
+                imagen.name,
+                imagen
+            )
 
-                fs = FileSystemStorage(
-                    location=os.path.join(settings.MEDIA_ROOT, 'noticias')
-                )
-
-                nombre_archivo = fs.save(
-                    imagen.name,
-                    imagen
-                )
-
-                ruta_imagen = f'noticias/{nombre_archivo}'
+            ruta_imagen = f'noticias/{nombre_archivo}'
 
         Noticia.objects.create(
             titulo=titulo,
@@ -1880,17 +1834,9 @@ def guardar_opinion(request):
             })
 
         # Leer opiniones existentes
-        if os.path.exists(OPINIONES_FILE) and os.path.getsize(OPINIONES_FILE) > 0:
-            try:
-                with open(OPINIONES_FILE, 'r', encoding='utf-8') as f:
-                    opiniones = json.load(f)
-            except json.JSONDecodeError:
-                opiniones = []
-        else:
-            opiniones = []
+        opiniones = leer_archivo_json(OPINIONES_FILE)
 
         # Agregar la nueva opinión
-        from datetime import datetime
         opiniones.append({
             'nombre': nombre,
             'texto': opinion,
@@ -1898,8 +1844,7 @@ def guardar_opinion(request):
         })
 
         # Guardar en el archivo
-        with open(OPINIONES_FILE, 'w', encoding='utf-8') as f:
-            json.dump(opiniones, f, ensure_ascii=False, indent=2)
+        guardar_archivo_json(OPINIONES_FILE, opiniones)
 
         messages.success(
             request,
@@ -1917,22 +1862,8 @@ def obtener_datos_sesion(request):
         persona = Persona.objects.filter(id_usuario=usuario).first()
         if not persona:
             return None, None
-            
-        # Determinar a que dashboard debe redirigir segun su rol
-        dashboard_url = 'login'
-        if PersonalAdministrativo.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-administrativo'
-        elif Docente.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-docente'
-        elif Tutor.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-padres'
-        elif Preceptor.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-preceptor'
-        elif Directivo.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-directivo'
-        elif Alumno.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-alumno'
-            
+
+        dashboard_url = determinar_dashboard_url(persona)
         return persona, dashboard_url
     except Usuario.DoesNotExist:
         return None, None
@@ -1969,20 +1900,7 @@ def crear_comunicado(request):
         if len(contenido_form) > 500:
             return redirect('dashboard-directivo')
 
-        comunicados = []
-
-        if os.path.exists(COMUNICADOS_FILE):
-            try:
-                with open(COMUNICADOS_FILE, 'r', encoding='utf-8') as f:
-                    file_content = f.read().strip()
-
-                    if file_content:
-                        comunicados = json.loads(file_content)
-
-            except json.JSONDecodeError:
-                comunicados = []
-
-        # 👇 🔥 ACÁ VA LO NUEVO (ANTES DE ARMAR EL OBJETO)
+        comunicados = leer_archivo_json(COMUNICADOS_FILE)
 
         curso_obj = None
 
@@ -1992,7 +1910,6 @@ def crear_comunicado(request):
                 legajo_preceptor__id_persona=persona
             ).first()
 
-        # 🔥 ARMADO DEL OBJETO (BASE)
         nuevo_comunicado = {
             'titulo': titulo,
             'contenido': contenido_form,
@@ -2001,20 +1918,13 @@ def crear_comunicado(request):
             'fecha': datetime.now().strftime('%d/%m/%Y %H:%M')
         }
 
-        # 👇 SOLO SI ES PRECEPTOR
         if rol == "Preceptor" and curso_obj:
             nuevo_comunicado['curso_id'] = curso_obj.id_curso
             nuevo_comunicado['curso'] = f"{curso_obj.nivel} {curso_obj.anio}° {curso_obj.comision}"
 
         comunicados.append(nuevo_comunicado)
 
-        with open(COMUNICADOS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(
-                comunicados,
-                f,
-                ensure_ascii=False,
-                indent=2
-            )
+        guardar_archivo_json(COMUNICADOS_FILE, comunicados)
 
         if rol == "Preceptor":
             return redirect('dashboard-preceptor')
@@ -2377,7 +2287,6 @@ def rechazar_documentacion(request, id_documentacion):
 
     doc.id_administrativo = administrativo
 
-    # Eliminar archivos físicos
     archivos = [
         doc.dni_frente,
         doc.dni_dorso,
@@ -2397,7 +2306,6 @@ def rechazar_documentacion(request, id_documentacion):
             if os.path.exists(ruta):
                 os.remove(ruta)
 
-    # Vaciar rutas de archivos
     doc.dni_frente = None
     doc.dni_dorso = None
     doc.partida_nacimiento = None
@@ -2413,7 +2321,6 @@ def rechazar_documentacion(request, id_documentacion):
     return redirect(
         'dashboard-administrativo'
     )
-    return redirect('dashboard-administrativo')
 
 @never_cache
 def list_tareas(request):
@@ -2674,8 +2581,6 @@ def guardar_nota(request):
             'error': str(ve)
         })
     except Exception as e:
-        import traceback
-        print("ERROR en guardar_nota:", traceback.format_exc())
         return JsonResponse({
             'success': False, 
             'error': str(e)

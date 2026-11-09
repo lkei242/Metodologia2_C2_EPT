@@ -1,12 +1,6 @@
 from .models import (
     Usuario,
     Persona,
-    PersonalAdministrativo,
-    Docente,
-    Tutor,
-    Preceptor,
-    Directivo,
-    Alumno,
 )
 
 
@@ -17,6 +11,8 @@ def datos_sesion_context(request):
 
     Esto elimina la duplicación de código en las funciones de vista.
     """
+    from .views import determinar_dashboard_url
+
     usuario_id = request.session.get('usuario_id')
     if not usuario_id:
         return {'persona': None, 'dashboard_url': None}
@@ -27,20 +23,7 @@ def datos_sesion_context(request):
         if not persona:
             return {'persona': None, 'dashboard_url': None}
 
-        dashboard_url = 'login'
-        if PersonalAdministrativo.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-administrativo'
-        elif Docente.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-docente'
-        elif Tutor.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-padres'
-        elif Preceptor.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-preceptor'
-        elif Directivo.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-directivo'
-        elif Alumno.objects.filter(id_persona=persona).exists():
-            dashboard_url = 'dashboard-alumno'
-
+        dashboard_url = determinar_dashboard_url(persona)
         return {'persona': persona, 'dashboard_url': dashboard_url}
     except Usuario.DoesNotExist:
         return {'persona': None, 'dashboard_url': None}
