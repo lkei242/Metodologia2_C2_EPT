@@ -1,7 +1,7 @@
 import datetime
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.seguridad import guardar_contrasenia
@@ -33,31 +33,29 @@ from core.models import (
 class Command(BaseCommand):
     help = "Carga datos de demostración para el sistema web y la app móvil (G2 / RF-M15 y RF-M16)."
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "--reset",
-            action="store_true",
-            help="Limpia registros previos de prueba antes de sembrar.",
-        )
-
     def handle(self, *args, **options):
+        # Freno: solo se siembra sobre una base vacía. Así nunca se mezcla con datos reales.
+        if Persona.objects.exists():
+            raise CommandError(
+                "La base ya tiene personas cargadas, así que seed_demo no se ejecuta "
+                "para no mezclar datos de demostración con datos reales. "
+                "Para una demo, usá una base vacía."
+            )
         self.stdout.write(self.style.NOTICE("Iniciando carga de datos demo..."))
 
         with transaction.atomic():
             # 1. Aranceles por nivel (RF-M15)
             aranceles_datos = [
                 ("Inicial", 48000.00),
-                ("Primario", 62000.00),
-                ("Secundario", 75000.00),
+                ("Primario", 25000.00),
+                ("Secundario", 32000.00),
             ]
+            # Solo crea los aranceles que falten: si ya existen, se respetan sus montos.
             for nivel, monto in aranceles_datos:
-                arancel, creado = Arancel.objects.get_or_create(
+                Arancel.objects.get_or_create(
                     nivel=nivel,
                     defaults={"monto": monto},
                 )
-                if not creado and arancel.monto != monto:
-                    arancel.monto = monto
-                    arancel.save(update_fields=["monto"])
             self.stdout.write(self.style.SUCCESS("[OK] Aranceles configurados."))
 
             # 2. Los cuatro recorridos de transporte obligatorios

@@ -125,7 +125,7 @@ def gestion_valores(request):
         return denied
 
     niveles = ["Inicial", "Primario", "Secundario"]
-    for niv, monto_defecto in [("Inicial", 48000.00), ("Primario", 62000.00), ("Secundario", 75000.00)]:
+    for niv, monto_defecto in [("Inicial", 48000.00), ("Primario", 25000.00), ("Secundario", 32000.00)]:
         Arancel.objects.get_or_create(nivel=niv, defaults={"monto": monto_defecto})
 
     for concepto, monto_defecto in [("Comedor", 35000.00), ("Transporte", 28000.00)]:

@@ -674,6 +674,8 @@ def dashboard_docente(request):
     horario_dict = {}
     for horario_materia in horarios:
         datos_horarios = horario_materia.horarios
+        if not datos_horarios:
+            continue  # curso/materia sin horario cargado
         if isinstance(datos_horarios, str):
             datos_horarios = json.loads(datos_horarios)
         for dia, rango in datos_horarios.items():
@@ -725,34 +727,8 @@ def horario_docente(request):
         id_materia__in=materias
     )
 
-    horario = {}
-
-    for curso_materia in cursos_materia:
-        datos_horarios = curso_materia.horarios
-
-        if isinstance(datos_horarios, str):
-            datos_horarios = json.loads(datos_horarios)
-
-        for dia, rango in datos_horarios.items():
-            if rango not in horario:
-                horario[rango] = {
-                    "Lunes": "-",
-                    "Martes": "-",
-                    "Miércoles": "-",
-                    "Jueves": "-",
-                    "Viernes": "-"
-                }
-
-            dia_formateado = dia.capitalize()
-
-            if dia_formateado == "Miercoles":
-                dia_formateado = "Miércoles"
-
-            horario[rango][dia_formateado] = curso_materia.id_curso.comision
-
-    return render(request, "tu_template.html", {
-        "horario": horario
-    })
+    # El horario semanal ya se muestra en el panel "Mi horario" del tablero docente.
+    return redirect('/docente/?panel=horario')
 
 
 
