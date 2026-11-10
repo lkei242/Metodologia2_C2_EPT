@@ -15,7 +15,16 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
-from api.permisos_dominio import PADRE, alumnos_visibles, exigir_alumno_visible, exigir_rol
+from api.permisos_dominio import (
+    DOCENTE,
+    PADRE,
+    PRECEPTOR,
+    alumnos_visibles,
+    alumnos_visibles_finanzas,
+    exigir_alumno_visible,
+    exigir_rol,
+    rol_de,
+)
 from core.facturacion import generar_pdf_factura
 from core.models import ComprobantePago, Cuota, Factura, ItemFactura, SolicitudPago, TutorTutoraAlumno
 
@@ -44,7 +53,11 @@ def _pagado(factura):
     return total or Decimal('0')
 
 
-def _alumno_dict(alumno):
+def _alumno_dict(alumno, reducido=False):
+    """Datos del alumno. `reducido` quita domicilio, teléfono, correo y datos del tutor.
+
+    Se usa para el docente y el preceptor, que en la web no ven esos datos.
+    """
     persona = alumno.id_persona
     curso = alumno.id_curso
     rel_tutor = (
@@ -67,9 +80,9 @@ def _alumno_dict(alumno):
         'apellido': persona.apellido,
         'dni': persona.dni or "",
         'fecha_nacimiento': persona.fecha_nacimiento.isoformat() if persona.fecha_nacimiento else None,
-        'telefono': persona.telefono or "",
-        'email': persona.email or "",
-        'direccion': persona.direccion or "",
+        'telefono': "" if reducido else (persona.telefono or ""),
+        'email': "" if reducido else (persona.email or ""),
+        'direccion': "" if reducido else (persona.direccion or ""),
         'estado': alumno.estado,
         'fecha_ingreso': alumno.fecha_ingreso.isoformat() if alumno.fecha_ingreso else None,
         'inscripto_comedor': bool(alumno.inscripto_comedor),
@@ -78,7 +91,7 @@ def _alumno_dict(alumno):
         'comision': curso.comision if curso else None,
         'nivel': curso.nivel if curso else None,
         'turno': curso.turno if curso else None,
-        'tutor': tutor_dict,
+        'tutor': None if reducido else tutor_dict,
     }
 
 
@@ -277,7 +290,8 @@ def alumnos(request):
     elif comedor in ('0', 'false', 'no'):
         qs = qs.filter(inscripto_comedor=False)
 
-    return Response([_alumno_dict(a) for a in qs])
+    reducido = rol_de(request.user) in (DOCENTE, PRECEPTOR)
+    return Response([_alumno_dict(a, reducido=reducido) for a in qs])
 
 
 @api_view(['GET'])
@@ -322,7 +336,7 @@ def deuda(request):
 def facturas(request):
     """Facturas y comprobantes visibles, con filtros ?alumno=, ?desde= y ?hasta= (AAAA-MM-DD)."""
     consulta = Factura.objects.select_related('alumno__id_persona').prefetch_related('comprobantes')
-    consulta = consulta.filter(alumno__in=alumnos_visibles(request.user))
+    consulta = consulta.filter(alumno__in=alumnos_visibles_finanzas(request.user))
 
     if request.query_params.get('alumno'):
         alumno, error = _alumno_de_query(request)

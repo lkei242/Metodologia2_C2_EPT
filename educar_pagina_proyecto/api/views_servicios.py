@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.response import Response
 
 from api.authentication import UsuarioJWTAuthentication
+from api.permisos_dominio import alumnos_visibles
 from api.permissions import EsAutenticado
 from core.domain_services import (
     ReglaNegocioError,
@@ -58,8 +59,11 @@ def _obtener_rol_usuario(usuario):
 def _obtener_alumnos_autorizados(usuario):
     """Devuelve el queryset de Alumnos que este usuario puede consultar/gestionar."""
     rol, persona = _obtener_rol_usuario(usuario)
-    if rol in ('administrativo', 'directivo', 'docente', 'preceptor'):
+    if rol in ('administrativo', 'directivo'):
         return Alumno.objects.filter(estado='Activo')
+    if rol in ('docente', 'preceptor'):
+        # Solo los alumnos de sus cursos, igual que en su panel web.
+        return alumnos_visibles(usuario).filter(estado='Activo')
     if rol == 'padre':
         tutor = Tutor.objects.filter(id_persona=persona).first()
         if not tutor:
@@ -70,8 +74,16 @@ def _obtener_alumnos_autorizados(usuario):
     return Alumno.objects.none()
 
 
-def _verificar_acceso_alumno(usuario, alumno_id):
-    """Verifica que el usuario tenga permiso sobre el alumno dado y lo devuelve."""
+def _verificar_acceso_alumno(usuario, alumno_id, escritura=False):
+    """Verifica que el usuario tenga permiso sobre el alumno dado y lo devuelve.
+
+    Con `escritura=True` (inscribir, dar de baja, cambiar transporte o comedor) el docente y el
+    preceptor no tienen permiso: en la web solo pueden consultar.
+    """
+    if escritura:
+        rol, _ = _obtener_rol_usuario(usuario)
+        if rol in ('docente', 'preceptor'):
+            return None
     alumnos = _obtener_alumnos_autorizados(usuario)
     alumno = alumnos.filter(pk=alumno_id).select_related('id_persona', 'id_curso').first()
     return alumno
@@ -215,7 +227,7 @@ def inscribir_deporte(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    alumno = _verificar_acceso_alumno(request.user, alumno_id)
+    alumno = _verificar_acceso_alumno(request.user, alumno_id, escritura=True)
     if not alumno:
         return Response(
             {'error': 'No tiene permisos para inscribir a este alumno.'},
@@ -261,7 +273,7 @@ def desinscribir_deporte(request, inscripcion_id):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    alumno = _verificar_acceso_alumno(request.user, ins.alumno_id)
+    alumno = _verificar_acceso_alumno(request.user, ins.alumno_id, escritura=True)
     if not alumno:
         return Response(
             {'error': 'No tiene permisos para modificar la inscripción de este alumno.'},
@@ -315,7 +327,7 @@ def actualizar_transporte(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    alumno = _verificar_acceso_alumno(request.user, alumno_id)
+    alumno = _verificar_acceso_alumno(request.user, alumno_id, escritura=True)
     if not alumno:
         return Response(
             {'error': 'No tiene permisos para gestionar el transporte de este alumno.'},
@@ -364,7 +376,7 @@ def actualizar_comedor(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    alumno = _verificar_acceso_alumno(request.user, alumno_id)
+    alumno = _verificar_acceso_alumno(request.user, alumno_id, escritura=True)
     if not alumno:
         return Response(
             {'error': 'No tiene permisos para modificar el comedor de este alumno.'},

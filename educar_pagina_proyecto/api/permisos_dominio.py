@@ -68,11 +68,37 @@ def hijos_visibles(usuario):
     return Alumno.objects.filter(pk__in=ids)
 
 
+def alumnos_de_docente(usuario):
+    """Alumnos de los cursos donde el docente dicta alguna materia (igual que su panel web)."""
+    docente = Docente.objects.filter(id_persona__id_usuario=usuario).first()
+    if docente is None:
+        return Alumno.objects.none()
+    return Alumno.objects.filter(
+        id_curso__cursocursamaterias__id_materia__docentedictamateria__id_docente=docente,
+    ).distinct()
+
+
+def alumnos_de_preceptor(usuario):
+    """Alumnos de los cursos asignados al preceptor (igual que su panel web)."""
+    preceptor = Preceptor.objects.filter(id_persona__id_usuario=usuario).first()
+    if preceptor is None:
+        return Alumno.objects.none()
+    return Alumno.objects.filter(id_curso__legajo_preceptor=preceptor)
+
+
 def alumnos_visibles(usuario):
-    """Alumnos cuyos datos financieros puede consultar el usuario."""
+    """Alumnos que el usuario puede consultar.
+
+    Administrativo y directivo ven a todos; el docente y el preceptor, solo a los alumnos de sus
+    cursos (lo mismo que ven en la web); el tutor, a sus hijos; el alumno, a sí mismo.
+    """
     rol = rol_de(usuario)
-    if rol in ROLES_PERSONAL_ESCOLAR:
+    if rol in (ADMINISTRATIVO, DIRECTIVO):
         return Alumno.objects.all()
+    if rol == DOCENTE:
+        return alumnos_de_docente(usuario)
+    if rol == PRECEPTOR:
+        return alumnos_de_preceptor(usuario)
     if rol == PADRE:
         return hijos_visibles(usuario)
     if rol == ALUMNO:
@@ -80,9 +106,20 @@ def alumnos_visibles(usuario):
     return Alumno.objects.none()
 
 
+# El docente y el preceptor no tienen datos financieros en la web, así que tampoco en la app.
+ROLES_SIN_FINANZAS = (DOCENTE, PRECEPTOR)
+
+
+def alumnos_visibles_finanzas(usuario):
+    """Alumnos cuyos datos financieros (cuotas, deuda, facturas) puede consultar el usuario."""
+    if rol_de(usuario) in ROLES_SIN_FINANZAS:
+        return Alumno.objects.none()
+    return alumnos_visibles(usuario)
+
+
 def exigir_alumno_visible(usuario, legajo):
-    """Devuelve el alumno si el usuario puede verlo; si no, corta con 403."""
-    alumno = alumnos_visibles(usuario).filter(pk=legajo).first()
+    """Devuelve el alumno si el usuario puede ver sus datos financieros; si no, corta con 403."""
+    alumno = alumnos_visibles_finanzas(usuario).filter(pk=legajo).first()
     if alumno is None:
         raise PermissionDenied('No tiene acceso a este alumno.')
     return alumno
