@@ -69,6 +69,16 @@
 6. **Acceder a la aplicación**:
    Abre tu navegador web e ingresa a: `http://127.0.0.1:8000/`
 
+7. **(Opcional) Cargar asistencias y notas de demostración**:
+   Completa solo a los alumnos activos que no tienen registros, sin modificar los existentes
+   y sin duplicar si se repite. Haz antes una copia de `db.sqlite3`.
+   ```bash
+   python manage.py cargar_datos_academicos --dry-run     # muestra qué cargaría
+   python manage.py cargar_datos_academicos --confirmar   # carga los datos
+   ```
+   Opciones: `--dias N` (días hábiles de asistencia, por defecto 15), `--bimestres 1|2|3`
+   (por defecto 2), `--omitir-notas` y `--omitir-asistencias`.
+
 ---
 
 ## Arquitectura del Sistema
