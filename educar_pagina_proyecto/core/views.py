@@ -1,28 +1,45 @@
 import json
+import logging
 import os
 import re
 from datetime import date, datetime
+from decimal import Decimal
 from functools import wraps
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.mail import EmailMessage
 from django.db import IntegrityError, transaction
-from django.db.models import Avg
+from django.db.models import Avg, Sum
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
+try:
+    import resend
+except ImportError:  # el envío cae al backend de correo de Django
+    resend = None
+
+from .domain_services import (
+    ReglaNegocioError,
+    finalizar_deporte,
+    inscribir_en_deporte,
+    publicar_cambio,
+)
 from .forms import InscripcionForm
+from .validacion_comprobantes import validar_archivo_comprobante
 from .seguridad import guardar_contrasenia, verificar_contrasenia
 from .models import (
     Alumno,
     Arancel,
     Asistencia,
     Calificacion,
+    ComprobantePago,
     Cuota,
     Curso,
     CursoCursaMaterias,
@@ -31,7 +48,10 @@ from .models import (
     Docente,
     DocenteDictaMateria,
     DocumentacionAlumno,
+    Factura,
+    GrupoDeportivo,
     Inscripcion,
+    InscripcionDeportiva,
     Instalacion,
     Materia,
     Noticia,
@@ -47,6 +67,8 @@ from .models import (
     TutorTutoraAlumno,
     Usuario,
 )
+
+logger = logging.getLogger(__name__)
 
 COMUNICADOS_FILE = os.path.join(os.path.dirname(__file__), 'comunicados.json')
 OPINIONES_FILE = os.path.join(os.path.dirname(__file__), 'opiniones.json')
@@ -453,6 +475,41 @@ def _procesar_justificacion_asistencia(request, alumno, persona):
     return redirect('dashboard-alumno')
 
 
+def _gestionar_deporte_alumno(request, alumno):
+    """Inscribe al alumno a un grupo deportivo o finaliza una inscripción activa.
+
+    Usa las mismas reglas de dominio que el portal de tutores y Administración
+    (máximo de dos deportes, sin superposición horaria) y registra la auditoría.
+    """
+    request.session['panel_activo'] = 'deportes'
+    try:
+        if request.POST.get('accion') == 'inscribir_deporte':
+            grupo = GrupoDeportivo.objects.select_related('disciplina').filter(
+                pk=request.POST.get('id_grupo')
+            ).first()
+            if grupo is None:
+                raise ReglaNegocioError('Debés seleccionar un grupo deportivo válido.')
+            fila = inscribir_en_deporte(alumno.pk, grupo.pk)
+            publicar_cambio(request, 'InscripcionDeportiva', fila.pk, 'inscribir', ['alumno', 'grupo', 'estado'])
+            messages.success(request, f'Te inscribiste correctamente en {grupo.disciplina.nombre}.')
+        else:
+            inscripcion = InscripcionDeportiva.objects.filter(
+                pk=request.POST.get('id_inscripcion'), alumno=alumno, estado='Activa'
+            ).first()
+            if inscripcion is None:
+                raise ReglaNegocioError('La inscripción deportiva ya no está activa.')
+            fila = finalizar_deporte(alumno.pk, inscripcion.pk)
+            publicar_cambio(request, 'InscripcionDeportiva', fila.pk, 'finalizar', ['estado'])
+            messages.success(request, 'Finalizaste tu inscripción deportiva.')
+    except (ReglaNegocioError, IntegrityError) as exc:
+        messages.error(request, str(exc) or 'No se pudo guardar el cambio.')
+    return redirect('dashboard-alumno')
+
+
+def _horario_grupo(grupo):
+    return f"{grupo.dia_semana} {grupo.hora_inicio:%H:%M}-{grupo.hora_fin:%H:%M}"
+
+
 @never_cache
 def dashboard_alumno(request):
     """Panel principal para el alumno: materias, horarios, calificaciones, asistencias y comunicados."""
@@ -470,36 +527,8 @@ def dashboard_alumno(request):
         'id_disciplina__id_instalacion',
     ).first()
 
-    if request.method == 'POST' and request.POST.get('accion') == 'inscribir_deporte':
-        request.session['panel_activo'] = 'deportes'
-        id_disciplina = request.POST.get('id_disciplina')
-
-        if not id_disciplina:
-            messages.error(request, 'Debes seleccionar una disciplina.')
-            return redirect('dashboard-alumno')
-
-        disciplina_elegida = DisciplinaDeportiva.objects.filter(
-            id_disciplina=id_disciplina
-        ).first()
-
-        if not disciplina_elegida:
-            messages.error(request, 'La disciplina seleccionada no existe.')
-            return redirect('dashboard-alumno')
-
-        if alumno.id_disciplina_id == disciplina_elegida.id_disciplina:
-            messages.info(
-                request,
-                f'Ya estás inscripto en {disciplina_elegida.nombre}.'
-            )
-            return redirect('dashboard-alumno')
-
-        alumno.id_disciplina = disciplina_elegida
-        alumno.save(update_fields=['id_disciplina'])
-        messages.success(
-            request,
-            f'Te inscribiste correctamente en {disciplina_elegida.nombre}.'
-        )
-        return redirect('dashboard-alumno')
+    if request.method == 'POST' and request.POST.get('accion') in ('inscribir_deporte', 'finalizar_deporte'):
+        return _gestionar_deporte_alumno(request, alumno)
 
     if request.method == 'POST' and request.FILES.get('justificacion'):
         return _procesar_justificacion_asistencia(request, alumno, persona)
@@ -515,6 +544,36 @@ def dashboard_alumno(request):
     horario_por_dia, disciplina_horario_formateado, hay_horarios = _obtener_resumen_horarios(
         materias, disciplina, disciplinas_disponibles
     )
+
+    inscripciones_deportivas = list(
+        InscripcionDeportiva.objects.filter(alumno=alumno, estado='Activa')
+        .select_related('grupo__disciplina__id_instalacion')
+        .order_by('grupo__disciplina__nombre')
+    )
+    for inscripcion in inscripciones_deportivas:
+        grupo = inscripcion.grupo
+        inscripcion.horario_formateado = _horario_grupo(grupo)
+        dia_norm = normalizar_nombre_dia(grupo.dia_semana)
+        if dia_norm in horario_por_dia:
+            horario_por_dia[dia_norm].append({
+                'materia': grupo.disciplina.nombre,
+                'hora': f"{grupo.hora_inicio:%H:%M}-{grupo.hora_fin:%H:%M}",
+                'es_deporte': True,
+            })
+            hay_horarios = True
+
+    grupos_inscripto = {i.grupo_id for i in inscripciones_deportivas}
+    disciplinas_inscripto = {i.grupo.disciplina_id for i in inscripciones_deportivas}
+    grupos_deportivos = list(
+        GrupoDeportivo.objects.select_related('disciplina__id_instalacion')
+        .order_by('disciplina__nombre', 'nivel', 'hora_inicio')
+    )
+    for grupo in grupos_deportivos:
+        grupo.horario_formateado = _horario_grupo(grupo)
+        grupo.inscripto = grupo.pk in grupos_inscripto
+        grupo.deporte_ya_elegido = (
+            grupo.disciplina_id in disciplinas_inscripto and not grupo.inscripto
+        )
 
     tutor_relacion = TutorTutoraAlumno.objects.filter(
         id_alumno=alumno
@@ -599,6 +658,8 @@ def dashboard_alumno(request):
         'disciplina': disciplina,
         'disciplina_horario_formateado': disciplina_horario_formateado,
         'disciplinas_disponibles': disciplinas_disponibles,
+        'inscripciones_deportivas': inscripciones_deportivas,
+        'grupos_deportivos': grupos_deportivos,
         'tutor_relacion': tutor_relacion,
         'horario_por_dia': horario_por_dia,
         'hay_horarios': hay_horarios,
@@ -614,7 +675,7 @@ def dashboard_docente(request):
         return redirect('login')
     if dashboard_url != 'dashboard-docente':
         return redirect(dashboard_url)
-    from django.db.models import Avg
+    from django.db.models import Avg, Sum
     
     docente = Docente.objects.filter(id_persona=persona).first()
 
@@ -943,6 +1004,43 @@ def enviar_postulacion(request):
 
     return redirect('postulacion')
 
+CORREO_INSTITUCIONAL = "educarparatransformarcolegio@gmail.com"
+
+
+def _enviar_consulta_por_correo(nombre, correo, mensaje):
+    """Envía la consulta al correo institucional.
+
+    Usa Resend cuando hay RESEND_API_KEY y, si no, el backend de correo de Django
+    (consola en desarrollo, SMTP si está configurado). Lanza una excepción si falla.
+    """
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    asunto = f"Consulta desde la web - {nombre}"
+
+    if api_key and resend is not None:
+        resend.api_key = api_key
+        resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": [CORREO_INSTITUCIONAL],
+            "reply_to": correo,
+            "subject": asunto,
+            "html": (
+                "<h2>Nueva consulta recibida</h2>"
+                f"<p><strong>Nombre:</strong> {escape(nombre)}</p>"
+                f"<p><strong>Correo:</strong> {escape(correo)}</p>"
+                f"<p>{escape(mensaje)}</p>"
+            ),
+        })
+        return
+
+    EmailMessage(
+        subject=asunto,
+        body=f"Nombre: {nombre}\nCorreo: {correo}\n\n{mensaje}",
+        from_email=settings.EMAIL_HOST_USER or None,
+        to=[CORREO_INSTITUCIONAL],
+        reply_to=[correo],
+    ).send(fail_silently=False)
+
+
 @never_cache
 def enviar_consulta(request):
 
@@ -981,22 +1079,15 @@ def enviar_consulta(request):
             return redirect('contacto')
 
         try:
-            resend.api_key = os.environ.get("RESEND_API_KEY")
-
-            resend.Emails.send({
-                "from": "onboarding@resend.dev",
-                "to": ["educarparatransformarcolegio@gmail.com"],
-                "subject": f"Consulta desde la web - {nombre}",
-                "html": f"""
-                    <h2>Nueva consulta recibida</h2>
-                    <p><strong>Nombre:</strong> {nombre}</p>
-                    <p><strong>Correo:</strong> {correo}</p>
-                    <p>{mensaje}</p>
-                """
-            })
-
-        except Exception as e:
-            raise
+            _enviar_consulta_por_correo(nombre, correo, mensaje)
+        except Exception:
+            logger.exception("No se pudo enviar la consulta de contacto")
+            messages.error(
+                request,
+                "No pudimos enviar tu consulta en este momento. "
+                "Intentá nuevamente más tarde o escribinos por WhatsApp."
+            )
+            return redirect('contacto')
 
         messages.success(
             request,
@@ -1020,6 +1111,8 @@ def enviar_consulta(request):
                 return redirect('dashboard-alumno')
 
         return redirect('contacto')
+
+    return redirect('contacto')
 
 
 @never_cache
@@ -1084,13 +1177,26 @@ def dashboard_administrativo(request):
         'panel_activo': panel_activo,
     })
 
+def _anio_sugerido_por_edad(nivel, edad):
+    """Año del curso que corresponde a la edad del postulante según el nivel.
+
+    Inicial admite de 3 a 5 años (salas de 3, 4 y 5 = años 1 a 3).
+    """
+    if nivel == "inicial":
+        return max(1, min(3, edad - 2))
+    if nivel == "primario":
+        return max(1, min(7, edad - 5))
+    return max(1, min(5, edad - 12))
+
+
 @never_cache
 @require_POST
 @requiere_roles("dashboard-administrativo")
 def aprobar_inscripcion(request, id_solicitud):
+    request.session["panel_activo"] = "inscripciones"
     solicitud = get_object_or_404(SolicitudInscripcion, id_solicitud=id_solicitud)
     if solicitud.estado != "Pendiente":
-        messages.error(request, "La solicitud ya fue procesada.")
+        messages.error(request, "La solicitud ya fue procesada.", extra_tags="inscripciones")
         return redirect("dashboard-administrativo")
     try:
         with transaction.atomic():
@@ -1103,10 +1209,13 @@ def aprobar_inscripcion(request, id_solicitud):
             hoy = date.today()
             edad = hoy.year - solicitud.fecha_nacimiento.year - ((hoy.month, hoy.day) < (solicitud.fecha_nacimiento.month, solicitud.fecha_nacimiento.day))
             nivel = solicitud.nivel.strip().lower()
-            anio = max(1, min(7, edad - 5)) if nivel == "primario" else max(1, min(5, edad - 12))
+            anio = _anio_sugerido_por_edad(nivel, edad)
             curso = Curso.objects.select_for_update().filter(nivel__iexact=solicitud.nivel, turno__iexact=solicitud.turno, anio=anio).order_by("comision").first()
             if not curso:
-                raise ValueError("No hay un curso compatible con el nivel, turno y edad indicados.")
+                raise ValueError(
+                    f"No hay un curso de nivel {solicitud.nivel.capitalize()}, turno {solicitud.turno}, "
+                    f"año {anio}. Créelo en Gestión > Cursos y materias y vuelva a aprobar la solicitud."
+                )
 
             persona_alumno = Persona.objects.create(
                 dni=solicitud.dni_alumno, nombre=solicitud.nombre_alumno,
@@ -1134,19 +1243,20 @@ def aprobar_inscripcion(request, id_solicitud):
             from .domain_services import publicar_cambio
             publicar_cambio(request, "SolicitudInscripcion", solicitud.pk, "aprobar", ["alumno", "tutor", "curso", "inscripción"])
     except ValueError as exc:
-        messages.error(request, str(exc))
+        messages.error(request, str(exc), extra_tags="inscripciones")
     except IntegrityError:
-        messages.error(request, "No se pudo aprobar: se detectó un DNI duplicado o una relación inconsistente.")
+        messages.error(request, "No se pudo aprobar: se detectó un DNI duplicado o una relación inconsistente.", extra_tags="inscripciones")
     else:
-        messages.success(request, f"Solicitud aprobada. Legajo del alumno: {alumno.legajo}.")
+        messages.success(request, f"Solicitud aprobada. Legajo del alumno: {alumno.legajo}.", extra_tags="inscripciones")
     return redirect("dashboard-administrativo")
 
 @require_POST
 @requiere_roles("dashboard-administrativo")
 def rechazar_inscripcion(request, id_solicitud):
+    request.session["panel_activo"] = "inscripciones"
     solicitud = get_object_or_404(SolicitudInscripcion, id_solicitud=id_solicitud)
     if solicitud.estado != "Pendiente":
-        messages.error(request, "La solicitud ya fue procesada.")
+        messages.error(request, "La solicitud ya fue procesada.", extra_tags="inscripciones")
     else:
         solicitud.estado = "Rechazada"
         solicitud.save(update_fields=["estado"])
@@ -1229,15 +1339,27 @@ def crear_reserva(request):
             messages.error(request, "No se pueden registrar reservas para días anteriores.", extra_tags="reservas")
             return redirect(reverse('dashboard-administrativo') + '#reservas')
         
-        if Reserva.objects.filter(
-            id_instalacion=instalacion,
-            fecha=fecha,
-            hora_inicio=hora_inicio,
-            hora_fin=hora_fin
-        ).exists():
+        if hora_fin <= hora_inicio:
             messages.error(
                 request,
-                "Ya existe una reserva para ese espacio, fecha y horario.",
+                "La hora de fin debe ser posterior a la hora de inicio.",
+                extra_tags="reservas"
+            )
+            return redirect(reverse('dashboard-administrativo') + '#reservas')
+
+        # Dos franjas se superponen cuando cada una empieza antes de que termine la otra;
+        # una reserva que empieza justo cuando termina otra no se superpone.
+        conflicto = Reserva.objects.filter(
+            id_instalacion=instalacion,
+            fecha=fecha,
+            hora_inicio__lt=hora_fin,
+            hora_fin__gt=hora_inicio,
+        ).order_by("hora_inicio").first()
+        if conflicto:
+            messages.error(
+                request,
+                f"Ya existe una reserva para ese espacio y fecha que se superpone "
+                f"({conflicto.hora_inicio:%H:%M} - {conflicto.hora_fin:%H:%M}).",
                 extra_tags="reservas"
             )
             return redirect(reverse('dashboard-administrativo') + '#reservas')
@@ -1358,6 +1480,88 @@ def crear_usuario(request):
 
     return redirect('dashboard-administrativo')
 
+DOCUMENTOS_REQUERIDOS = (
+    ('dni_frente', 'DNI (frente)'),
+    ('dni_dorso', 'DNI (dorso)'),
+    ('partida_nacimiento', 'Partida de nacimiento'),
+    ('certificado_salud', 'Certificado de salud'),
+)
+
+
+def _estado_documentacion(documentacion):
+    """Describe, para el panel del tutor, en qué situación está la documentación de un hijo.
+
+    Claves: 'falta' (nunca envió), 'revision' (enviada, sin revisar), 'aprobada' y
+    'rechazada' (hay que volver a cargarla). Solo en 'falta' y 'rechazada' se puede enviar.
+    """
+    if documentacion is None:
+        clave, etiqueta, clase, puede_enviar = 'falta', 'Falta presentar', 'badge-red', True
+        documento_estado = ('Falta', 'badge-red')
+    elif documentacion.estado == 'Aprobada':
+        clave, etiqueta, clase, puede_enviar = 'aprobada', 'Documentación aprobada', 'badge-green', False
+        documento_estado = ('Aprobado', 'badge-green')
+    elif documentacion.estado == 'Rechazada':
+        clave, etiqueta, clase, puede_enviar = 'rechazada', 'Rechazada: hay que volver a cargarla', 'badge-red', True
+        documento_estado = ('Volver a cargar', 'badge-red')
+    else:
+        clave, etiqueta, clase, puede_enviar = 'revision', 'En revisión', 'badge-yellow', False
+        documento_estado = ('Enviado, en revisión', 'badge-yellow')
+
+    return {
+        'clave': clave,
+        'etiqueta': etiqueta,
+        'clase': clase,
+        'puede_enviar': puede_enviar,
+        'documentos': [
+            {'nombre': nombre, 'estado': documento_estado[0], 'clase': documento_estado[1]}
+            for _, nombre in DOCUMENTOS_REQUERIDOS
+        ],
+    }
+
+
+def _historial_facturas(tutor):
+    """Facturas del tutor con sus comprobantes y un estado legible para el panel.
+
+    A diferencia de las cuotas (que se crean recién cuando una factura queda pagada),
+    esto muestra también los pagos en revisión, parciales o rechazados.
+    """
+    if tutor is None:
+        return []
+
+    facturas = (
+        Factura.objects.filter(tutor=tutor)
+        .select_related('alumno__id_persona', 'alumno__id_curso')
+        .prefetch_related('comprobantes')
+        .order_by('-periodo', 'alumno__id_persona__apellido', 'alumno__id_persona__nombre')
+    )
+    filas = []
+    for factura in facturas:
+        comprobantes = list(factura.comprobantes.all())  # más recientes primero
+        aprobado = sum((c.importe for c in comprobantes if c.estado == 'Aprobado'), Decimal('0'))
+        en_revision = any(c.estado == 'Pendiente' for c in comprobantes)
+
+        if factura.estado == 'Pagada':
+            estado, clase = 'Pagada', 'badge-green'
+        elif en_revision:
+            estado, clase = 'Comprobante en revisión', 'badge-yellow'
+        elif factura.estado == 'Parcial':
+            estado, clase = 'Pago parcial', 'badge-yellow'
+        elif comprobantes and comprobantes[0].estado == 'Rechazado':
+            estado, clase = 'Comprobante rechazado: cargue uno nuevo', 'badge-red'
+        else:
+            estado, clase = 'Pendiente de pago', 'badge-blue'
+
+        filas.append({
+            'factura': factura,
+            'estado': estado,
+            'clase': clase,
+            'pagado': aprobado,
+            'saldo': max(factura.total - aprobado, Decimal('0')),
+            'comprobantes': comprobantes,
+        })
+    return filas
+
+
 @never_cache
 def dashboard_padres(request):
     persona, dashboard_url = obtener_datos_sesion(request)
@@ -1426,7 +1630,7 @@ def dashboard_padres(request):
             
             documentacion = DocumentacionAlumno.objects.filter(
                 legajo_alumno=alumno
-            ).first()
+            ).order_by('-fecha_envio', '-id_documentacion').first()
 
             hijos.append({
                 'alumno': alumno,
@@ -1437,7 +1641,14 @@ def dashboard_padres(request):
                 'ausencias': aus,
                 'tardanzas': tar,
                 'documentacion': documentacion,
+                'doc': _estado_documentacion(documentacion),
             })
+
+    resumen_documentacion = {'aprobada': 0, 'revision': 0, 'rechazada': 0, 'falta': 0}
+    for hijo in hijos:
+        resumen_documentacion[hijo['doc']['clave']] += 1
+    resumen_documentacion['total'] = len(hijos)
+    hijos_que_pueden_enviar = [hijo for hijo in hijos if hijo['doc']['puede_enviar']]
 
     promedio_general = round(
         suma_promedios / cantidad_promedios,
@@ -1513,11 +1724,23 @@ def dashboard_padres(request):
     ).select_related(
         'id_legajo_alumno__id_persona'
     ).order_by('-id_cuota')
-    
+
+    facturas_historial = _historial_facturas(tutor)
+    pagos_en_revision = (
+        PagoPendiente.objects.filter(id_tutor=tutor, estado='Pendiente')
+        .select_related('legajo_alumno__id_persona')
+        .order_by('-fecha_solicitud')
+        if tutor else PagoPendiente.objects.none()
+    )
+
     return render(
         request,
         'core/dashboard-padres.html',
         {
+            'facturas_historial': facturas_historial,
+            'pagos_en_revision': pagos_en_revision,
+            'resumen_documentacion': resumen_documentacion,
+            'hijos_que_pueden_enviar': hijos_que_pueden_enviar,
             'persona': persona,
             'hijos': hijos,
             'promedio_general': promedio_general,
@@ -1911,10 +2134,20 @@ def crear_comunicado(request):
         else:
             return redirect('dashboard-directivo')
         
+MESES_CALENDARIO = {
+    'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+    'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12,
+}
+
+
 @never_cache
 @require_POST
 def registrar_pago(request):
+    """El tutor sube el comprobante de transferencia de la factura del mes de su hijo.
 
+    El importe es el saldo pendiente de la factura. El comprobante queda 'Pendiente'
+    hasta que administración lo apruebe o lo rechace (comprobantes_pendientes).
+    """
     persona, rol = obtener_datos_sesion(request)
 
     if not persona:
@@ -1922,101 +2155,69 @@ def registrar_pago(request):
     if rol != "dashboard-padres":
         return HttpResponseForbidden("Solo un tutor autenticado puede registrar pagos de sus hijos.")
 
-    tutor = Tutor.objects.filter(
-        id_persona=persona
-    ).first()
+    tutor = Tutor.objects.filter(id_persona=persona).first()
+    request.session["panel_activo"] = "pagos"
 
-    if request.method == 'POST':
-
-        try:
-
-            alumno = Alumno.objects.get(
-                legajo=request.POST.get('alumno')
-            )
-
-            if not tutor or not TutorTutoraAlumno.objects.filter(id_tutor=tutor, id_alumno=alumno).exists():
-                return HttpResponseForbidden("Solo puede gestionar pagos de hijos vinculados a su cuenta.")
-
-            curso = alumno.id_curso
-
-            arancel = Arancel.objects.get(
-                nivel=curso.nivel
-            )
-
-            importe = arancel.monto
-
-            if PagoPendiente.objects.filter(
-                legajo_alumno=alumno,
-                mes=request.POST.get('mes'),
-                estado='Pendiente'
-            ).exists():
-
-                messages.error(
-                    request,
-                    'Ya existe una solicitud pendiente para ese mes.',
-                    extra_tags="pagos"
-                )
-
-                request.session["panel_activo"] = "pagos"
-                return redirect('dashboard-padres')
-
-            if Cuota.objects.filter(
-                id_legajo_alumno=alumno,
-                periodo=request.POST.get('mes'),
-                estado='Pagada'
-            ).exists():
-
-                messages.error(
-                    request,
-                    f'La cuota de {request.POST.get("mes")} ya fue abonada.',
-                    extra_tags="pagos"
-                )
-
-                request.session["panel_activo"] = "pagos"
-                return redirect('dashboard-padres')
-
-            PagoPendiente.objects.create(
-                id_tutor=tutor,
-                legajo_alumno=alumno,
-                mes=request.POST.get('mes'),
-                importe=importe,
-                estado='Pendiente',
-                fecha_solicitud=timezone.now()
-            )
-
-            messages.success(
-                request,
-                'El comprobante de pago fue enviado correctamente y será revisado por administración.',
-                extra_tags="pagos"
-            )
-
-        except Alumno.DoesNotExist:
-
-            messages.error(
-                request,
-                'Debe seleccionar un alumno válido.',
-                extra_tags="pagos"
-            )
-
-        except Arancel.DoesNotExist:
-
-            messages.error(
-                request,
-                'No existe un arancel configurado para este nivel.',
-                extra_tags="pagos"
-            )
-
-        except Exception as e:
-
-            messages.error(
-                request,
-                f'Ocurrió un error al registrar el pago: {e}',
-                extra_tags="pagos"
-            )
-
-        request.session["panel_activo"] = "pagos"
+    def volver(mensaje, exito=False):
+        if exito:
+            messages.success(request, mensaje, extra_tags="pagos")
+        else:
+            messages.error(request, mensaje, extra_tags="pagos")
         return redirect('dashboard-padres')
-    return redirect('dashboard-padres')
+
+    if tutor is None:
+        return volver("No se encontró su perfil de tutor.")
+
+    alumno = Alumno.objects.filter(legajo=request.POST.get('alumno')).first()
+    if alumno is None:
+        return volver("Debe seleccionar un alumno válido.")
+    if not TutorTutoraAlumno.objects.filter(id_tutor=tutor, id_alumno=alumno).exists():
+        return HttpResponseForbidden("Solo puede gestionar pagos de hijos vinculados a su cuenta.")
+
+    mes = (request.POST.get('mes') or '').strip()
+    numero_mes = MESES_CALENDARIO.get(mes.lower())
+    if numero_mes is None:
+        return volver("Debe seleccionar un mes válido.")
+
+    archivo = request.FILES.get('comprobante')
+    if archivo is None:
+        return volver("Adjunte el comprobante de transferencia (PDF, PNG o JPG).")
+    error_archivo = validar_archivo_comprobante(archivo)
+    if error_archivo:
+        return volver(error_archivo)
+
+    factura = (
+        Factura.objects.filter(alumno=alumno, periodo__endswith=f"-{numero_mes:02d}")
+        .order_by('-periodo')
+        .first()
+    )
+    if factura is None:
+        return volver(f"No hay factura emitida para {mes} de este alumno.")
+
+    with transaction.atomic():
+        factura = Factura.objects.select_for_update().get(pk=factura.pk)
+        if factura.estado == 'Pagada':
+            return volver("La factura de ese mes ya está pagada.")
+        if factura.comprobantes.filter(estado='Pendiente').exists():
+            return volver("Ya hay un comprobante pendiente de revisión para esa factura.")
+        aprobado = (
+            factura.comprobantes.filter(estado='Aprobado').aggregate(suma=Sum('importe'))['suma']
+            or Decimal('0')
+        )
+        saldo = factura.total - aprobado
+        if saldo <= 0:
+            return volver("La factura de ese mes ya está cubierta por comprobantes aprobados.")
+        ComprobantePago.objects.create(
+            factura=factura,
+            archivo=archivo,
+            importe=saldo,
+            subido_por_id=request.session.get('usuario_id'),
+        )
+
+    return volver(
+        'El comprobante de pago fue enviado correctamente y será revisado por administración.',
+        exito=True,
+    )
 
 @never_cache
 @require_POST
@@ -2078,21 +2279,18 @@ def enviar_documentacion(request):
 
         doc_existente = DocumentacionAlumno.objects.filter(
             legajo_alumno=alumno
-        ).first()
+        ).order_by('-fecha_envio', '-id_documentacion').first()
 
-        if doc_existente and doc_existente.estado == 'Pendiente':
-
-            messages.error(
-                request,
-                'Este alumno ya tiene documentación cargada.',
-                extra_tags="documentacion"
-            )
-
+        nombre_alumno = f'{alumno.id_persona.nombre} {alumno.id_persona.apellido}'
+        bloqueo = None
+        if doc_existente and doc_existente.estado == 'Aprobada':
+            bloqueo = f'La documentación de {nombre_alumno} ya fue aprobada; no hace falta enviarla de nuevo.'
+        elif doc_existente and doc_existente.estado not in ('Rechazada',):
+            bloqueo = f'La documentación de {nombre_alumno} ya fue enviada y está en revisión.'
+        if bloqueo:
+            messages.error(request, bloqueo, extra_tags="documentacion")
             request.session["panel_activo"] = "documentacion"
             return redirect('dashboard-padres')
-
-        if doc_existente and doc_existente.estado == 'Rechazada':
-            doc_existente.delete()
 
         fs = FileSystemStorage(
             location='media/documentacion'
@@ -2185,6 +2383,10 @@ def enviar_documentacion(request):
             salud
         )
 
+        # Recién ahora, con los archivos nuevos ya guardados, se reemplaza el envío rechazado.
+        if doc_existente and doc_existente.estado == 'Rechazada':
+            doc_existente.delete()
+
         DocumentacionAlumno.objects.create(
             legajo_alumno=alumno,
             dni_frente=f'documentacion/{ruta_dni_frente}',
@@ -2197,7 +2399,7 @@ def enviar_documentacion(request):
 
         messages.success(
             request,
-            'La documentación fue enviada correctamente.',
+            f'La documentación de {nombre_alumno} fue enviada correctamente y quedó en revisión.',
             extra_tags="documentacion"
         )
 

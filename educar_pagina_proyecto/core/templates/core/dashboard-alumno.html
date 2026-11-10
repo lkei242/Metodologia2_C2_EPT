@@ -222,13 +222,21 @@
             </thead>
 
             <tbody>
+              {% for insc in inscripciones_deportivas %}
+              <tr>
+                <td>{{ insc.grupo.disciplina.nombre }}</td>
+                <td>{{ insc.grupo.disciplina.id_instalacion.nombre }}</td>
+                <td>{{ insc.horario_formateado }}</td>
+              </tr>
+              {% endfor %}
               {% if disciplina %}
               <tr>
                 <td>{{ disciplina.nombre }}</td>
                 <td>{{ disciplina.id_instalacion.nombre }}</td>
                 <td>{{ disciplina_horario_formateado }}</td>
               </tr>
-              {% else %}
+              {% endif %}
+              {% if not inscripciones_deportivas and not disciplina %}
               <tr>
                 <td colspan="3">No tenés una disciplina deportiva asignada.</td>
               </tr>
@@ -344,15 +352,36 @@
         <div id="panel-deportes" class="panel">
           <p class="section-title">Inscripción deportiva</p>
 
+          <p class="stat-sub" style="margin-bottom: 20px;">Podés estar inscripto en hasta dos deportes a la vez, sin que se superpongan sus horarios.</p>
+
+          {% for insc in inscripciones_deportivas %}
+          <div class="stat-card" style="margin-bottom: 20px;">
+            <div class="stat-label">Tu disciplina</div>
+            <div class="stat-value" style="font-size: 27.5px; color: #16a34a;">{{ insc.grupo.disciplina.nombre }}</div>
+            <div class="stat-sub">
+              {{ insc.grupo.disciplina.id_instalacion.nombre }} · {{ insc.grupo.nivel }} · {{ insc.horario_formateado }}
+            </div>
+            <form method="post" style="margin-top: 12px;">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="finalizar_deporte">
+              <input type="hidden" name="id_inscripcion" value="{{ insc.pk }}">
+              <button type="submit" class="btn-form" style="margin-top: 0; padding: 8px 18px; font-size: 16px;">Finalizar inscripción</button>
+            </form>
+          </div>
+          {% endfor %}
+
           {% if disciplina %}
-          <div class="stat-card" style="margin-bottom: 30px;">
-            <div class="stat-label">Tu disciplina actual</div>
+          <div class="stat-card" style="margin-bottom: 20px;">
+            <div class="stat-label">Disciplina anterior (sin grupo asignado)</div>
             <div class="stat-value" style="font-size: 27.5px; color: #16a34a;">{{ disciplina.nombre }}</div>
             <div class="stat-sub">
-              {{ disciplina.id_instalacion.nombre }} · {{ disciplina_horario_formateado }}
+              {{ disciplina.id_instalacion.nombre }} · {{ disciplina_horario_formateado }}.
+              Administración debe confirmar el grupo y el horario antes de que puedas inscribirte en otro deporte.
             </div>
           </div>
-          {% else %}
+          {% endif %}
+
+          {% if not inscripciones_deportivas and not disciplina %}
           <div class="stat-card" style="margin-bottom: 30px;">
             <div class="stat-label">Estado</div>
             <div class="stat-sub">Todavía no estás inscripto en ninguna disciplina deportiva.</div>
@@ -372,37 +401,41 @@
             {% endif %}
           {% endif %}
 
-          <p class="section-title">Disciplinas disponibles</p>
+          <p class="section-title">Grupos disponibles</p>
 
           <table class="tabla">
             <thead>
               <tr>
                 <th>Disciplina</th>
+                <th>Nivel</th>
                 <th>Instalación</th>
                 <th>Horario</th>
                 <th>Acción</th>
               </tr>
             </thead>
             <tbody>
-              {% for dep in disciplinas_disponibles %}
+              {% for grupo in grupos_deportivos %}
               <tr>
-                <td>{{ dep.nombre }}</td>
-                <td>{{ dep.id_instalacion.nombre }}</td>
-                <td>{{ dep.horario_formateado }}</td>
+                <td>{{ grupo.disciplina.nombre }}</td>
+                <td>{{ grupo.nivel }}</td>
+                <td>{{ grupo.disciplina.id_instalacion.nombre }}</td>
+                <td>{{ grupo.horario_formateado }}</td>
                 <td>
-                  {% if disciplina and disciplina.id_disciplina == dep.id_disciplina %}
+                  {% if grupo.inscripto %}
                     <span class="badge badge-green">Inscripto</span>
+                  {% elif grupo.deporte_ya_elegido %}
+                    <span class="badge">Ya cursás este deporte</span>
                   {% else %}
                     <form method="post" style="display: inline;">
                       {% csrf_token %}
                       <input type="hidden" name="accion" value="inscribir_deporte">
-                      <input type="hidden" name="id_disciplina" value="{{ dep.id_disciplina }}">
+                      <input type="hidden" name="id_grupo" value="{{ grupo.pk }}">
                       <button
                         type="submit"
                         class="btn-form"
                         style="margin-top: 0; padding: 10px 20px; font-size: 17.5px;"
                       >
-                        {% if disciplina %}Cambiar{% else %}Inscribirme{% endif %}
+                        Inscribirme
                       </button>
                     </form>
                   {% endif %}
@@ -410,7 +443,7 @@
               </tr>
               {% empty %}
               <tr>
-                <td colspan="4">No hay disciplinas deportivas disponibles.</td>
+                <td colspan="5">No hay grupos deportivos disponibles.</td>
               </tr>
               {% endfor %}
             </tbody>

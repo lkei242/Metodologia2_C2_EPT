@@ -144,6 +144,16 @@
           <div id="panel-inscripciones" class="panel">
             <p class="section-title">Gestión de inscripciones</p>
 
+            {% if messages %}
+              {% for message in messages %}
+                {% if 'inscripciones' in message.tags %}
+                  <div class="mensaje {{ message.level_tag }}">
+                    {{ message }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+
             <table class="tabla">
               <thead>
                 <tr>
@@ -219,6 +229,8 @@
 
           <div id="panel-pagos" class="panel">
             <p class="section-title">Control de pagos</p>
+
+            <p><a href="{% url 'comprobantes-pendientes' %}">Ver comprobantes de transferencia pendientes</a></p>
 
             <table class="tabla">
               <thead>

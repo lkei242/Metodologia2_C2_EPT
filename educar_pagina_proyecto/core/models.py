@@ -81,6 +81,11 @@ class Aula(models.Model):
         managed = True
         db_table = 'aula'
 
+    def __str__(self):
+        if self.numero is not None and str(self.numero) not in self.nombre:
+            return f"{self.nombre} (aula {self.numero})"
+        return self.nombre
+
 
 class Calificacion(models.Model):
     id_calificacion = models.AutoField(primary_key=True)
@@ -144,6 +149,9 @@ class Curso(models.Model):
         managed = True
         db_table = 'curso'
 
+    def __str__(self):
+        return f"{self.nivel} {self.anio}° {self.comision} - {self.turno}"
+
 
 class CursoCursaMaterias(models.Model):
     id_curso = models.ForeignKey(Curso, models.DO_NOTHING, db_column='id_curso')
@@ -171,6 +179,9 @@ class Directivo(models.Model):
     class Meta:
         managed = True
         db_table = 'directivo'
+
+    def __str__(self):
+        return f"{self.id_persona.apellido}, {self.id_persona.nombre}"
 
 
 class DisciplinaDeportiva(models.Model):
@@ -204,6 +215,11 @@ class Docente(models.Model):
     class Meta:
         managed = True
         db_table = 'docente'
+
+    def __str__(self):
+        persona = self.id_persona
+        nombre = f"{persona.apellido}, {persona.nombre}"
+        return f"{nombre} ({self.especialidad})" if self.especialidad else nombre
 
 
 class DocenteDictaMateria(models.Model):
@@ -442,6 +458,9 @@ class Instalacion(models.Model):
         managed = True
         db_table = 'instalacion'
 
+    def __str__(self):
+        return self.nombre
+
 
 class Materia(models.Model):
     id_materia = models.AutoField(primary_key=True)
@@ -453,6 +472,9 @@ class Materia(models.Model):
     class Meta:
         managed = True
         db_table = 'materia'
+
+    def __str__(self):
+        return self.nombre
 
 
 class Noticia(models.Model):
@@ -512,6 +534,9 @@ class PersonalAdministrativo(models.Model):
         managed = True
         db_table = 'personal_administrativo'
 
+    def __str__(self):
+        return f"{self.id_persona.apellido}, {self.id_persona.nombre}"
+
 
 class Preceptor(models.Model):
     legajo = models.AutoField(primary_key=True)
@@ -522,6 +547,11 @@ class Preceptor(models.Model):
     class Meta:
         managed = True
         db_table = 'preceptor'
+
+    def __str__(self):
+        persona = self.id_persona
+        nombre = f"{persona.apellido}, {persona.nombre}"
+        return f"{nombre} ({self.turno})" if self.turno else nombre
 
 
 class Reserva(models.Model):
@@ -576,6 +606,9 @@ class Tutor(models.Model):
     class Meta:
         managed = True
         db_table = 'tutor'
+
+    def __str__(self):
+        return f"{self.id_persona.apellido}, {self.id_persona.nombre}"
 
 
 class TutorTutoraAlumno(models.Model):

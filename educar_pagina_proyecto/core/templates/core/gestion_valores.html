@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static l10n %}<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
@@ -27,26 +27,56 @@
           <p>Valores base aplicados a la emisión y facturación mensual según nivel del curso.</p>
           {% for a in aranceles_cuotas %}
             <div class="field">
-              <label for="monto_{{ a.id_arancel }}">Nivel {{ a.nivel }}:</label>
+              <label for="monto_{{ a.pk }}">Nivel {{ a.nivel }}:</label>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span>$</span>
-                <input type="number" step="0.01" min="0" id="monto_{{ a.id_arancel }}" name="monto_{{ a.id_arancel }}" value="{{ a.monto }}" required>
+                <input type="number" step="0.01" min="0" id="monto_{{ a.pk }}" name="monto_{{ a.pk }}" value="{{ a.monto|unlocalize }}" required>
               </div>
             </div>
           {% endfor %}
         </section>
 
         <section>
-          <h2>Valores de Servicios Escolares</h2>
-          <p>Importes aplicados a los servicios complementarios (comedor y transporte).</p>
-          {% for a in aranceles_servicios %}
+          <h2>Servicio de Comedor</h2>
+          <p>Importe mensual único aplicado a los alumnos inscriptos en el comedor.</p>
+          <div class="field">
+            <label for="comedor">Comedor:</label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span>$</span>
+              <input type="number" step="0.01" min="0" id="comedor" name="comedor" {% if valor_comedor %}value="{{ valor_comedor.monto|unlocalize }}"{% else %}placeholder="Sin valor configurado"{% endif %}>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Valor de cada Deporte</h2>
+          <p>Importe mensual por deporte. Se factura una vez por cada deporte en el que el alumno está inscripto.</p>
+          {% for d in disciplinas %}
             <div class="field">
-              <label for="monto_{{ a.id_arancel }}">{{ a.nivel }}:</label>
+              <label for="disc_{{ d.pk }}">{{ d.nombre }}:</label>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span>$</span>
-                <input type="number" step="0.01" min="0" id="monto_{{ a.id_arancel }}" name="monto_{{ a.id_arancel }}" value="{{ a.monto }}" required>
+                <input type="number" step="0.01" min="0" id="disc_{{ d.pk }}" name="disc_{{ d.pk }}" {% if d.valor is not None %}value="{{ d.valor|unlocalize }}"{% else %}placeholder="Sin valor configurado"{% endif %}>
               </div>
             </div>
+          {% empty %}
+            <p>No hay deportes cargados.</p>
+          {% endfor %}
+        </section>
+
+        <section>
+          <h2>Valor de cada Recorrido de Transporte</h2>
+          <p>Importe mensual por recorrido. El transporte es opcional y se factura solo si el alumno tiene un recorrido activo.</p>
+          {% for r in recorridos %}
+            <div class="field">
+              <label for="rec_{{ r.pk }}">{{ r.nombre }}:</label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>$</span>
+                <input type="number" step="0.01" min="0" id="rec_{{ r.pk }}" name="rec_{{ r.pk }}" {% if r.valor is not None %}value="{{ r.valor|unlocalize }}"{% else %}placeholder="Sin valor configurado"{% endif %}>
+              </div>
+            </div>
+          {% empty %}
+            <p>No hay recorridos cargados.</p>
           {% endfor %}
         </section>
       </div>

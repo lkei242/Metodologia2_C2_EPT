@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseForbidden
@@ -8,9 +10,10 @@ from .business_forms import GrupoDeportivoForm, InscripcionDeportivaForm, Recorr
 from .domain_services import ReglaNegocioError, asignar_transporte, inscribir_en_deporte
 from .domain_services import publicar_cambio, finalizar_deporte
 from .management_views import _autorizar_gestion
-from .models import (Alumno, Arancel, GrupoDeportivo, InscripcionDeportiva,
-                     InscripcionTransporte, RecorridoTransporte,
-                     Tutor, TutorTutoraAlumno)
+from .models import (Alumno, Arancel, DisciplinaDeportiva, GrupoDeportivo,
+                     InscripcionDeportiva, InscripcionTransporte,
+                     RecorridoTransporte, Tutor, TutorTutoraAlumno,
+                     ValorComedor)
 from .views import obtener_datos_sesion
 
 
@@ -128,33 +131,94 @@ def gestion_valores(request):
     for niv, monto_defecto in [("Inicial", 48000.00), ("Primario", 25000.00), ("Secundario", 32000.00)]:
         Arancel.objects.get_or_create(nivel=niv, defaults={"monto": monto_defecto})
 
-    for concepto, monto_defecto in [("Comedor", 35000.00), ("Transporte", 28000.00)]:
-        Arancel.objects.get_or_create(nivel=concepto, defaults={"monto": monto_defecto})
+    # La facturación lee la cuota de Arancel (por nivel), el comedor de ValorComedor,
+    # el deporte de DisciplinaDeportiva.valor y el transporte de RecorridoTransporte.valor.
+    # Esta pantalla edita exactamente esas fuentes, sin tablas espejo.
+    aranceles = list(Arancel.objects.filter(nivel__in=niveles).order_by("nivel"))
+    valor_comedor = ValorComedor.objects.first()
+    disciplinas = list(DisciplinaDeportiva.objects.order_by("nombre"))
+    recorridos = list(RecorridoTransporte.objects.order_by("nombre"))
 
     if request.method == "POST":
-        modificados = []
-        for arancel in Arancel.objects.all():
-            nuevo_monto_raw = request.POST.get(f"monto_{arancel.id_arancel}")
-            if nuevo_monto_raw is not None:
-                try:
-                    nuevo_monto = float(nuevo_monto_raw)
-                    if nuevo_monto >= 0 and nuevo_monto != float(arancel.monto):
-                        arancel.monto = nuevo_monto
-                        arancel.save(update_fields=["monto"])
-                        modificados.append(arancel.nivel)
-                except ValueError:
-                    pass
-        if modificados:
-            publicar_cambio(request, "Arancel", "lote", "actualizar", modificados)
-            messages.success(request, f"Valores actualizados para: {', '.join(modificados)}.")
+        errores = []
+        cambios = []  # (entidad, objeto, campo, nuevo valor, etiqueta)
+
+        def evaluar(entidad, objeto, campo, nombre_campo, etiqueta):
+            crudo = request.POST.get(nombre_campo)
+            if crudo is None:
+                return
+            try:
+                nuevo = _leer_importe(crudo)
+            except ValueError as exc:
+                errores.append(f"{etiqueta}: {exc}.")
+                return
+            if nuevo is not None and getattr(objeto, campo, None) != nuevo:
+                cambios.append((entidad, objeto, campo, nuevo, etiqueta))
+
+        for arancel in aranceles:
+            evaluar("Arancel", arancel, "monto", f"monto_{arancel.pk}", f"Cuota {arancel.nivel}")
+        for disciplina in disciplinas:
+            evaluar("DisciplinaDeportiva", disciplina, "valor", f"disc_{disciplina.pk}", f"Deporte {disciplina.nombre}")
+        for recorrido in recorridos:
+            evaluar("RecorridoTransporte", recorrido, "valor", f"rec_{recorrido.pk}", recorrido.nombre)
+        if valor_comedor is not None:
+            evaluar("ValorComedor", valor_comedor, "monto", "comedor", "Comedor")
         else:
+            try:
+                nuevo_comedor = _leer_importe(request.POST.get("comedor"))
+            except ValueError as exc:
+                errores.append(f"Comedor: {exc}.")
+            else:
+                if nuevo_comedor is not None:
+                    cambios.append(("ValorComedor", None, "monto", nuevo_comedor, "Comedor"))
+
+        if errores:
+            for error in errores:
+                messages.error(request, error)
+            return redirect("gestion-valores")
+
+        if not cambios:
             messages.info(request, "No se registraron cambios en los importes.")
+            return redirect("gestion-valores")
+
+        modificados_por_entidad = {}
+        with transaction.atomic():
+            for entidad, objeto, campo, nuevo, etiqueta in cambios:
+                if objeto is None:
+                    objeto = ValorComedor.objects.create(monto=nuevo)
+                else:
+                    setattr(objeto, campo, nuevo)
+                    objeto.save(update_fields=[campo])
+                modificados_por_entidad.setdefault(entidad, []).append(etiqueta)
+            for entidad, etiquetas in modificados_por_entidad.items():
+                publicar_cambio(request, entidad, "lote", "actualizar", etiquetas)
+        modificados = [etiqueta for etiquetas in modificados_por_entidad.values() for etiqueta in etiquetas]
+        messages.success(request, f"Valores actualizados para: {', '.join(modificados)}.")
         return redirect("gestion-valores")
 
-    aranceles_cuotas = Arancel.objects.filter(nivel__in=niveles).order_by("nivel")
-    aranceles_servicios = Arancel.objects.exclude(nivel__in=niveles).order_by("nivel")
-
     return render(request, "core/gestion_valores.html", {
-        "aranceles_cuotas": aranceles_cuotas,
-        "aranceles_servicios": aranceles_servicios,
+        "aranceles_cuotas": aranceles,
+        "valor_comedor": valor_comedor,
+        "disciplinas": disciplinas,
+        "recorridos": recorridos,
     })
+
+
+def _leer_importe(crudo):
+    """Convierte el texto del formulario en un importe válido.
+
+    Devuelve None si el campo vino vacío (no se modifica) y lanza ValueError con un
+    mensaje legible si el valor no es un importe permitido.
+    """
+    texto = (crudo or "").strip().replace(",", ".")
+    if texto == "":
+        return None
+    try:
+        valor = Decimal(texto)
+    except InvalidOperation:
+        raise ValueError("no es un número válido")
+    if not valor.is_finite() or valor < 0:
+        raise ValueError("debe ser un número mayor o igual a cero")
+    if valor >= Decimal("100000000"):
+        raise ValueError("el importe es demasiado grande")
+    return valor.quantize(Decimal("0.01"))

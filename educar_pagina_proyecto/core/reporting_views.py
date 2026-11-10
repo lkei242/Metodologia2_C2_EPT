@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 
 from django.http import HttpResponseForbidden
@@ -36,6 +37,33 @@ def _authorized(request):
 
 def _text(instance):
     return f"{instance.id_persona.apellido}, {instance.id_persona.nombre}"
+
+
+_ORDEN_DIAS = {
+    dia: posicion
+    for posicion, dia in enumerate(("lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"))
+}
+
+
+def _formatear_horarios(crudo):
+    """Convierte horarios guardados como JSON ({"Martes": "11:00-12:20"}) en texto legible.
+
+    Si el valor no es un JSON de días y franjas, se devuelve tal como está guardado.
+    """
+    if not crudo:
+        return "Sin horario cargado"
+    try:
+        datos = json.loads(crudo) if isinstance(crudo, str) else crudo
+    except ValueError:
+        return crudo
+    if not isinstance(datos, dict) or not datos:
+        return crudo
+
+    def clave(par):
+        dia = par[0].strip().lower().replace("é", "e").replace("á", "a")
+        return _ORDEN_DIAS.get(dia, len(_ORDEN_DIAS))
+
+    return "; ".join(f"{dia} {franja}" for dia, franja in sorted(datos.items(), key=clave))
 
 
 def _row(headers, *values):
@@ -120,7 +148,7 @@ def build_report(code, filters):
         rows = []
         for a in qs:
             relation = CursoCursaMaterias.objects.filter(id_curso=a.curso, id_materia=a.materia).first()
-            rows.append(_row(headers, _text(a.docente), a.curso.nivel, f"{a.curso.anio}° {a.curso.comision} - {a.materia.nombre}", relation.horarios if relation else "Sin horario cargado"))
+            rows.append(_row(headers, _text(a.docente), a.curso.nivel, f"{a.curso.anio}° {a.curso.comision} - {a.materia.nombre}", _formatear_horarios(relation.horarios) if relation else "Sin horario cargado"))
         return headers, rows, "Se muestran las asignaciones docente-curso-materia explícitamente registradas."
 
     if code == "R-03":
@@ -221,7 +249,11 @@ def reportes(request):
     if role == "dashboard-padres" and code == "R-01":
         tutor = Tutor.objects.filter(id_persona=persona).first()
         linked = Alumno.objects.filter(tutortutoraalumno__id_tutor=tutor).distinct() if tutor else Alumno.objects.none()
-        filters["alumno"] = request.GET.get("alumno", "") if linked.filter(pk=request.GET.get("alumno")).exists() else ""
+        # Sin hijo elegido el filtro llega vacío ("") y un valor manipulado puede no ser
+        # numérico: ambos casos muestran el aviso de selección en vez de fallar.
+        alumno_pedido = request.GET.get("alumno", "").strip()
+        es_hijo_propio = alumno_pedido.isdigit() and linked.filter(pk=int(alumno_pedido)).exists()
+        filters["alumno"] = alumno_pedido if es_hijo_propio else ""
         allowed_students = linked.select_related("id_persona")
         force_empty = not filters["alumno"]
     elif role == "dashboard-alumno" and code == "R-01":

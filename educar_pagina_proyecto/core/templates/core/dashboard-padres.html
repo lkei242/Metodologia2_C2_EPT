@@ -275,7 +275,7 @@
                 {% endfor %}
             {% endif %}
 
-            <form method="POST" action="{% url 'registrar_pago' %}">
+            <form method="POST" action="{% url 'registrar_pago' %}" enctype="multipart/form-data">
               {% csrf_token %}
 
               <div class="form-group">
@@ -309,7 +309,12 @@
                 </select>
               </div>
 
-              <p>El importe será calculado automáticamente según el nivel del alumno.</p>
+              <div class="form-group">
+                <label>Comprobante de transferencia (PDF, PNG o JPG, máximo 5 MB)</label>
+                <input type="file" name="comprobante" accept=".pdf,.png,.jpg,.jpeg" required>
+              </div>
+
+              <p>El importe es el saldo pendiente de la factura del mes seleccionado.</p>
 
               <button type="submit" class="btn-form">Enviar pago</button>
             </form>
@@ -318,7 +323,99 @@
           <!-- HISTORIAL -->
           <div id="panel-cuotas" class="panel">
 
-              <h2>Historial de cuotas</h2>
+              <h2>Facturas y comprobantes</h2>
+              <p class="stat-sub" style="margin-bottom: 15px;">
+                Acá ves el estado de cada factura y de los comprobantes que cargaste.
+                La cuota figura en el historial de abajo cuando Administración aprueba el pago completo.
+              </p>
+
+              <div style="overflow-x: auto;">
+              <table class="tabla">
+                  <thead>
+                      <tr>
+                          <th>Alumno</th>
+                          <th>Período</th>
+                          <th>Vence</th>
+                          <th>Total</th>
+                          <th>Pagado</th>
+                          <th>Saldo</th>
+                          <th>Estado y comprobantes</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for fila in facturas_historial %}
+                      <tr>
+                          <td>
+                              {{ fila.factura.alumno.id_persona.nombre }}
+                              {{ fila.factura.alumno.id_persona.apellido }}
+                              {% if fila.factura.alumno.id_curso %}
+                                <br><small>{{ fila.factura.alumno.id_curso.nivel }} {{ fila.factura.alumno.id_curso.anio }}° {{ fila.factura.alumno.id_curso.comision }}</small>
+                              {% endif %}
+                          </td>
+                          <td style="white-space: nowrap;">{{ fila.factura.periodo }}</td>
+                          <td style="white-space: nowrap;">{{ fila.factura.vencimiento|date:"d/m/Y" }}</td>
+                          <td>${{ fila.factura.total }}</td>
+                          <td>${{ fila.pagado }}</td>
+                          <td>${{ fila.saldo }}</td>
+                          <td>
+                              <span class="badge {{ fila.clase }}">{{ fila.estado }}</span>
+                              {% for comprobante in fila.comprobantes %}
+                                <div style="margin-top: 6px;">
+                                  <small>
+                                    {{ comprobante.fecha_carga|date:"d/m/Y H:i" }} · ${{ comprobante.importe }} ·
+                                    {% if comprobante.estado == 'Aprobado' %}
+                                      <span class="badge badge-green">Aprobado</span>
+                                    {% elif comprobante.estado == 'Rechazado' %}
+                                      <span class="badge badge-red">Rechazado</span>
+                                    {% else %}
+                                      <span class="badge badge-yellow">En revisión</span>
+                                    {% endif %}
+                                  </small>
+                                </div>
+                              {% empty %}
+                                <div style="margin-top: 6px;"><small>Sin comprobantes cargados</small></div>
+                              {% endfor %}
+                          </td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                          <td colspan="7">No hay facturas emitidas para sus hijos.</td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+              </div>
+
+              {% if pagos_en_revision %}
+              <h2 style="margin-top: 30px;">Pagos enviados pendientes de aprobación</h2>
+              <table class="tabla">
+                  <thead>
+                      <tr>
+                          <th>Alumno</th>
+                          <th>Mes</th>
+                          <th>Importe</th>
+                          <th>Enviado</th>
+                          <th>Estado</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for pago in pagos_en_revision %}
+                      <tr>
+                          <td>
+                              {{ pago.legajo_alumno.id_persona.nombre }}
+                              {{ pago.legajo_alumno.id_persona.apellido }}
+                          </td>
+                          <td>{{ pago.mes }}</td>
+                          <td>${{ pago.importe }}</td>
+                          <td>{{ pago.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+                          <td><span class="badge badge-yellow">En revisión</span></td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+              {% endif %}
+
+              <h2 style="margin-top: 30px;">Historial de cuotas</h2>
 
               <table class="tabla">
                   <thead>
@@ -392,35 +489,64 @@
                       {% endfor %}
                   {% endif %}
 
-                  <!-- ESTADO DE LA DOCUMENTACION -->
+                  <!-- RESUMEN -->
+                  {% if hijos %}
+                  <p class="portal-intro" style="margin-bottom: 12px;">
+                      Documentación de sus {{ resumen_documentacion.total }} hijo{{ resumen_documentacion.total|pluralize }}:
+                      <span class="badge badge-green">{{ resumen_documentacion.aprobada }} aprobada{{ resumen_documentacion.aprobada|pluralize }}</span>
+                      <span class="badge badge-yellow">{{ resumen_documentacion.revision }} en revisión</span>
+                      <span class="badge badge-red">{{ resumen_documentacion.rechazada }} rechazada{{ resumen_documentacion.rechazada|pluralize }}</span>
+                      <span class="badge badge-red">{{ resumen_documentacion.falta }} sin presentar</span>
+                  </p>
+                  {% endif %}
+
+                  <!-- ESTADO DE LA DOCUMENTACION DE CADA HIJO -->
                   {% for hijo in hijos %}
 
-                      {% if hijo.documentacion %}
+                      <div class="tarea-card" style="margin-bottom:18.75px;">
 
-                          <div class="tarea-card" style="margin-bottom:18.75px;">
+                          <strong>
+                              {{ hijo.persona.nombre }}
+                              {{ hijo.persona.apellido }}
+                          </strong>
+                          {% if hijo.curso %}
+                              <small>· {{ hijo.curso.nivel }} {{ hijo.curso.anio }}° {{ hijo.curso.comision }}</small>
+                          {% endif %}
 
-                              <strong>
-                                  {{ hijo.persona.nombre }}
-                                  {{ hijo.persona.apellido }}
-                              </strong>
+                          <br>
 
-                              <br>
+                          <span class="badge {{ hijo.doc.clase }}">{{ hijo.doc.etiqueta }}</span>
 
-                              Estado:
-                              {{ hijo.documentacion.estado }}
-
-                              {% if hijo.documentacion.estado == 'Rechazada' %}
-                                  <br>
-                                  Motivo:
-                                  {{ hijo.documentacion.observaciones }}
+                          <p style="margin: 8px 0;">
+                              {% if hijo.doc.clave == 'falta' %}
+                                  Todavía no se envió ningún documento. Hay que adjuntar los cuatro documentos de la lista.
+                              {% elif hijo.doc.clave == 'revision' %}
+                                  Enviada el {{ hijo.documentacion.fecha_envio|date:"d/m/Y H:i" }}. Administración la está revisando; no hace falta hacer nada más.
+                              {% elif hijo.doc.clave == 'aprobada' %}
+                                  Aprobada{% if hijo.documentacion.fecha_revision %} el {{ hijo.documentacion.fecha_revision|date:"d/m/Y" }}{% endif %}. El legajo está completo.
+                              {% elif hijo.doc.clave == 'rechazada' %}
+                                  Rechazada{% if hijo.documentacion.fecha_revision %} el {{ hijo.documentacion.fecha_revision|date:"d/m/Y" }}{% endif %}.
+                                  {% if hijo.documentacion.observaciones %}<strong>Motivo:</strong> {{ hijo.documentacion.observaciones }}.{% endif %}
+                                  Vuelva a cargar los cuatro documentos desde el formulario de abajo.
                               {% endif %}
+                          </p>
 
-                          </div>
+                          <ul style="list-style: none; padding: 0; margin: 0;">
+                              {% for documento in hijo.doc.documentos %}
+                              <li style="margin-bottom: 4px;">
+                                  {{ documento.nombre }}:
+                                  <span class="badge {{ documento.clase }}">{{ documento.estado }}</span>
+                              </li>
+                              {% endfor %}
+                          </ul>
 
-                      {% endif %}
+                      </div>
 
+                  {% empty %}
+                      <p>No hay hijos vinculados a su cuenta.</p>
                   {% endfor %}
 
+                  {% if hijos_que_pueden_enviar %}
                   <p class="portal-intro">
                       Adjunte la documentación obligatoria para completar el legajo.
                   </p>
@@ -439,10 +565,12 @@
                               Seleccione un alumno
                           </option>
 
-                          {% for hijo in hijos %}
+                          {% for hijo in hijos_que_pueden_enviar %}
                           <option value="{{ hijo.alumno.legajo }}">
                               {{ hijo.persona.nombre }}
                               {{ hijo.persona.apellido }}
+                              {% if hijo.curso %}- {{ hijo.curso.nivel }} {{ hijo.curso.anio }}° {{ hijo.curso.comision }}{% endif %}
+                              {% if hijo.doc.clave == 'rechazada' %}(volver a cargar){% else %}(falta presentar){% endif %}
                           </option>
                           {% endfor %}
                       </select>
@@ -485,6 +613,12 @@
                   </button>
 
               </form>
+              {% elif hijos %}
+              <p class="portal-intro">
+                  No hay documentación pendiente de enviar: todos sus hijos ya la presentaron.
+                  Si Administración rechaza alguna, volverá a aparecer acá para cargarla de nuevo.
+              </p>
+              {% endif %}
 
           </div>
 
